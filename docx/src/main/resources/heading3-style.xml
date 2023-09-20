@@ -1,0 +1,23 @@
+<w:style w:type="paragraph" w:styleId="Heading3" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+	<w:name w:val="heading 3" />
+	<w:basedOn w:val="Normal" />
+	<w:next w:val="Normal" />
+	<w:link w:val="Heading3Char" />
+	<w:uiPriority w:val="9" />
+	<w:unhideWhenUsed />
+	<w:qFormat />
+	<w:rsid w:val="005673F3" />
+	<w:pPr>
+		<w:keepNext />
+		<w:keepLines />
+		<w:spacing w:before="200" w:after="120" />
+		<w:outlineLvl w:val="2" />
+	</w:pPr>
+	<w:rPr>
+		<w:rFonts w:eastAsiaTheme="majorEastAsia" w:cstheme="majorBidi" />
+		<w:b />
+		<w:bCs />
+		<w:color w:val="4F81BD" w:themeColor="accent1" />
+		<w:sz w:val="24" />
+	</w:rPr>
+</w:style>
