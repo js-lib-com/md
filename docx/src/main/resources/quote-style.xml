@@ -1,0 +1,23 @@
+<w:style w:type="paragraph" w:styleId="IntenseQuote" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+	<w:name w:val="Intense Quote" />
+	<w:basedOn w:val="Normal" />
+	<w:next w:val="Normal" />
+	<w:link w:val="IntenseQuoteChar" />
+	<w:uiPriority w:val="30" />
+	<w:qFormat />
+	<w:rsid w:val="00B02CA2" />
+	<w:pPr>
+		<w:pBdr>
+			<w:bottom w:val="single" w:sz="4" w:space="4" w:color="4F81BD" w:themeColor="accent1" />
+		</w:pBdr>
+		<w:spacing w:before="200" w:after="280" />
+		<w:ind w:left="936" w:right="936" />
+	</w:pPr>
+	<w:rPr>
+		<w:b />
+		<w:bCs />
+		<w:i />
+		<w:iCs />
+		<w:color w:val="4F81BD" w:themeColor="accent1" />
+	</w:rPr>
+</w:style>

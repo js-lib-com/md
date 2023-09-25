@@ -16,6 +16,7 @@ public class DocxStyles {
 	private static final String LIST_STYLE_ID = "ListParagraph";
 	private static final String LINK_STYLE_ID = "Hyperlink";
 	private static final String TABLE_STYLE_ID = "LightShading-Accent1";
+	private static final String QUOTE_STYLE_ID = "IntenseQuote";
 
 	private static final String HEADING1_STYLE_RESOURCE = "/heading1-style.xml";
 	private static final String HEADING2_STYLE_RESOURCE = "/heading2-style.xml";
@@ -24,6 +25,7 @@ public class DocxStyles {
 	private static final String LIST_STYLE_RESOURCE = "/list-paragraph-style.xml";
 	// private static final String LINK_STYLE_RESOURCE = "/link-style.xml";
 	private static final String TABLE_STYLE_RESOURCE = "/table-style.xml";
+	private static final String QUOTE_STYLE_RESOURCE = "/quote-style.xml";
 
 	private final XWPFStyles styles;
 
@@ -36,6 +38,7 @@ public class DocxStyles {
 		addStyle(LIST_STYLE_ID, LIST_STYLE_RESOURCE);
 		// addStyle(LINK_STYLE_ID, LINK_STYLE_RESOURCE);
 		addStyle(TABLE_STYLE_ID, TABLE_STYLE_RESOURCE);
+		addStyle(QUOTE_STYLE_ID, QUOTE_STYLE_RESOURCE);
 	}
 
 	private void addStyle(String styleID, String styleResource) throws IOException, XmlException {
@@ -86,5 +89,9 @@ public class DocxStyles {
 
 	public static String getTableStyleId() {
 		return TABLE_STYLE_ID;
+	}
+
+	public static String getQuoteStyleId() {
+		return QUOTE_STYLE_ID;
 	}
 }

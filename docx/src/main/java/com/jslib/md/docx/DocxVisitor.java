@@ -25,8 +25,10 @@ import org.commonmark.ext.gfm.tables.TableBody;
 import org.commonmark.ext.gfm.tables.TableCell;
 import org.commonmark.ext.gfm.tables.TableHead;
 import org.commonmark.ext.gfm.tables.TableRow;
+import org.commonmark.node.BlockQuote;
 import org.commonmark.node.BulletList;
 import org.commonmark.node.Emphasis;
+import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
 import org.commonmark.node.Image;
 import org.commonmark.node.Link;
@@ -75,6 +77,7 @@ public class DocxVisitor extends CustomVisitor {
 	private XWPFParagraph currentParagraph;
 	private XWPFRun currentRun;
 	private boolean ignoreParagraph;
+	private boolean blockQuoteDetected;
 
 	public DocxVisitor(DocxTemplate template) throws IOException, XmlException {
 		this(new XWPFDocument(template.getInputStream()));
@@ -163,9 +166,36 @@ public class DocxVisitor extends CustomVisitor {
 		if (!ignoreParagraph) {
 			log("-- Create paragraph");
 			currentParagraph = document.createParagraph();
+			if (blockQuoteDetected) {
+				blockQuoteDetected = false;
+				log("-- Set style: Quote");
+				currentParagraph.setStyle(DocxStyles.getQuoteStyleId());
+			}
 		}
 		ignoreParagraph = false;
 		super.visit(paragraph);
+	}
+
+	@Override
+	public void visit(BlockQuote blockQuote) {
+		log("visit block quote");
+		blockQuoteDetected = true;
+		super.visit(blockQuote);
+	}
+
+	@Override
+	public void visit(FencedCodeBlock fencedCodeBlock) {
+		log("visit code block");
+		if (!ignoreParagraph) {
+			log("-- Create paragraph");
+			currentParagraph = document.createParagraph();
+			log("-- Create run");
+			XWPFRun run = currentParagraph.createRun();
+			run.setText(fencedCodeBlock.getLiteral());
+			// TODO: use fencedCodeBlock.getInfo() to set style depending on language, e.g. java
+		}
+		ignoreParagraph = false;
+		super.visit(fencedCodeBlock);
 	}
 
 	@Override
