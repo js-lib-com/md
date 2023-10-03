@@ -27,6 +27,7 @@ import org.commonmark.ext.gfm.tables.TableHead;
 import org.commonmark.ext.gfm.tables.TableRow;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.BulletList;
+import org.commonmark.node.Code;
 import org.commonmark.node.Emphasis;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
@@ -120,6 +121,13 @@ public class DocxVisitor extends CustomVisitor {
 	public void visit(Heading heading) {
 		log("visit heading");
 
+		if (heading.getLevel() == 1) {
+			log("Add page break before heading 1");
+			XWPFParagraph paragraph = document.createParagraph();
+			XWPFRun run = paragraph.createRun();
+			run.addBreak(org.apache.poi.xwpf.usermodel.BreakType.PAGE);
+		}
+
 		log("-- Create paragraph");
 		currentParagraph = document.createParagraph();
 
@@ -169,7 +177,7 @@ public class DocxVisitor extends CustomVisitor {
 			if (blockQuoteDetected) {
 				blockQuoteDetected = false;
 				log("-- Set style: Quote");
-				currentParagraph.setStyle(DocxStyles.getQuoteStyleId());
+				currentParagraph.setStyle(DocxStyles.getIntenseQuoteStyleId());
 			}
 		}
 		ignoreParagraph = false;
@@ -181,6 +189,16 @@ public class DocxVisitor extends CustomVisitor {
 		log("visit block quote");
 		blockQuoteDetected = true;
 		super.visit(blockQuote);
+	}
+
+	@Override
+	public void visit(Code code) {
+		log("visit inline code");
+		log(code.getLiteral());
+		XWPFRun run = currentParagraph.createRun();
+		run.setText(code.getLiteral());
+		run.setStyle(DocxStyles.getQuoteCharStyleId());
+		super.visit(code);
 	}
 
 	@Override
