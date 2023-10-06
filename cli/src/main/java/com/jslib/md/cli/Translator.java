@@ -15,10 +15,19 @@ import com.jslib.util.Strings;
 public class Translator {
 	public static void main(String[] args) {
 		String[] files = { "document.md", "revisions.md", "document.properties" };
+		String workingDir = args.length > 0 ? args[0] : null;
 
 		for (String file : files) {
+			String format = file.endsWith(".md") ? "mardown" : "Java properties";
+			if (workingDir != null) {
+				if (!workingDir.endsWith("/")) {
+					workingDir += "/";
+				}
+				file = workingDir + file;
+			}
+
 			try {
-				String text = translate(Files.readString(Path.of(file)), "English", "Romanian");
+				String text = translate(Files.readString(Path.of(file)), format, "English", "Romanian");
 				Files.write(Path.of(i18n(file, "ro")), text.getBytes());
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -32,8 +41,8 @@ public class Translator {
 	}
 
 	private static final String PARAGRAPHS_SEPARATOR = System.lineSeparator() + System.lineSeparator();
-	
-	static String translate(String text, String sourceLanguage, String targetLanguage) {
+
+	static String translate(String text, String format, String sourceLanguage, String targetLanguage) {
 		String translation = "";
 		String sourceParagraphs = "";
 
@@ -45,14 +54,14 @@ public class Translator {
 			// magic limit of 3000 characters is deduced empirically
 			if (sourceParagraphs.length() >= 3000) {
 				System.out.println("source paragraphs: " + sourceParagraphs);
-				translation += openAiTranslate(sourceParagraphs, sourceLanguage, targetLanguage);
+				translation += openAiTranslate(sourceParagraphs, format, sourceLanguage, targetLanguage);
 				sourceParagraphs = "";
 			}
 		}
 
 		if (!sourceParagraphs.isEmpty()) {
 			System.out.println("source paragraphs: " + sourceParagraphs);
-			translation += openAiTranslate(sourceParagraphs, sourceLanguage, targetLanguage);
+			translation += openAiTranslate(sourceParagraphs, format, sourceLanguage, targetLanguage);
 		}
 
 		return translation;
@@ -60,8 +69,8 @@ public class Translator {
 
 	private static final URI OPENAI_URI = URI.create("https://api.openai.com/v1/chat/completions");
 
-	static String openAiTranslate(String text, String sourceLanguage, String targetLanguage) {
-		String prompt = String.format("Translate the following %s markdown text to %s while preserving original formatting characters:\n\n%s", sourceLanguage, targetLanguage, text);
+	static String openAiTranslate(String text, String format, String sourceLanguage, String targetLanguage) {
+		String prompt = String.format("Translate the following %s %s text to %s while preserving original formatting characters:\n\n%s", sourceLanguage, format, targetLanguage, text);
 		OpenAiRequest openAiRequest = new OpenAiRequest(prompt);
 		Json json = new JsonImpl();
 
@@ -99,7 +108,7 @@ public class Translator {
 
 		OpenAiRequest(String prompt) {
 			this.messages = new Message[] { //
-					new Message("system", "You are a helpful assistant that translates formatted text."), //
+					new Message("system", "You are a helpful assistant that translates formatted text. For Java properties file please preserve original keys."), //
 					new Message("user", prompt) //
 			};
 			this.max_tokens = 2400;
