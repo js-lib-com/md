@@ -29,9 +29,10 @@ public class Main {
 		File documentDir = new File(args.length >= 1 ? args[0] : ".");
 		String documentFileName = "document.md";
 		String documentPropertiesFileName = "document.properties";
+		String formatPropertiesFileName = "format.properties";
 		String revisionsFileName = "revisions.md";
-		
-		String language = args.length == 2? args[1]: null;
+
+		String language = args.length == 2 ? args[1] : null;
 		if (language != null) {
 			documentFileName = String.format("document_%s.md", language);
 			documentPropertiesFileName = String.format("document_%s.properties", language);
@@ -39,7 +40,7 @@ public class Main {
 		}
 
 		File markdownFile = new File(documentDir, documentFileName);
-		if(!markdownFile.exists()) {
+		if (!markdownFile.exists()) {
 			System.out.printf("Missing markdown file %s .\r\n", markdownFile);
 			return;
 		}
@@ -70,8 +71,17 @@ public class Main {
 			properties.load(reader);
 		}
 
+		File formatPropertiesFile = new File(documentDir, formatPropertiesFileName);
+		Properties formatProperties = new Properties();
+		if (formatPropertiesFile.exists()) {
+			// format properties is optional
+			try (Reader reader = new FileReader(formatPropertiesFile)) {
+				formatProperties.load(reader);
+			}
+		}
+
 		DocxTemplate template = new DocxTemplate(properties);
-		DocxVisitor documentVisitor = new DocxVisitor(template, documentDir);
+		DocxVisitor documentVisitor = new DocxVisitor(template, formatProperties, documentDir);
 
 		DocxRevisions revisions = new DocxRevisions(documentVisitor.getDocument());
 		try (FileReader reader = new FileReader(revisionsFile)) {

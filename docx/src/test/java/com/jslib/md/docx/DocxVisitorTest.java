@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
@@ -14,8 +15,6 @@ import org.commonmark.Extension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.parser.Parser;
 import org.junit.Test;
-
-import com.jslib.md.docx.DocxVisitor;
 
 public class DocxVisitorTest {
 	private static final String TEMPLATE_FILE = "work/template.docx";
@@ -87,7 +86,7 @@ public class DocxVisitorTest {
 				row.getCell(2).setText("Create user manual document for Call Radar application.");
 			}
 
-			DocxVisitor visitor = new DocxVisitor(document);
+			DocxVisitor visitor = new DocxVisitor(document, new Properties());
 			parser.parse(markdown).accept(visitor);
 
 			try (FileOutputStream outputStream = new FileOutputStream(DOCUMENT_FILE)) {

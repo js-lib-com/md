@@ -13,6 +13,7 @@ public class DocxStyles {
 	private static final String HEADING2_STYLE_ID = "Heading2";
 	private static final String HEADING3_STYLE_ID = "Heading3";
 	private static final String HEADING4_STYLE_ID = "Heading4";
+	private static final String NO_SPACING = "NoSpacing";
 	private static final String LIST_STYLE_ID = "ListParagraph";
 	private static final String LINK_STYLE_ID = "Hyperlink";
 	private static final String TABLE_STYLE_ID = "LightShading-Accent1";
@@ -66,6 +67,10 @@ public class DocxStyles {
 		default:
 			throw new IllegalStateException("Unsuported level " + level);
 		}
+	}
+
+	public static String getNoSpacing() {
+		return NO_SPACING;
 	}
 
 	public static String getHeading1StyleId() {

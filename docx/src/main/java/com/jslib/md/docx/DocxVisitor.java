@@ -6,10 +6,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.poi.util.Units;
+import org.apache.poi.xwpf.usermodel.Borders;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
@@ -20,6 +22,7 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.apache.xmlbeans.XmlException;
+import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.commonmark.ext.gfm.tables.TableBlock;
 import org.commonmark.ext.gfm.tables.TableBody;
 import org.commonmark.ext.gfm.tables.TableCell;
@@ -58,11 +61,14 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblLook;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 
 import com.jslib.md.docx.template.DocxTemplate;
+import com.jslib.md.docx.util.Color;
 import com.jslib.md.docx.util.Dimensions;
 import com.jslib.md.docx.util.Images;
+import com.jslib.md.docx.util.Strings;
 
 public class DocxVisitor extends CustomVisitor {
 	private final Images images;
@@ -71,30 +77,38 @@ public class DocxVisitor extends CustomVisitor {
 	// the width of the page used for content display, i.e. page size minus left and right margins
 	private final BigInteger contentPageWidth;
 
+	private final Properties formatProperties;
 	@SuppressWarnings("unused")
 	private final DocxStyles styles;
 	private final DocxNumbering numbering;
 
+	private int topHeadingsCount;
 	private XWPFParagraph currentParagraph;
 	private XWPFRun currentRun;
 	private boolean ignoreParagraph;
 	private boolean blockQuoteDetected;
 
 	public DocxVisitor(DocxTemplate template) throws IOException, XmlException {
-		this(new XWPFDocument(template.getInputStream()));
+		this(new XWPFDocument(template.getInputStream()), new Properties());
 	}
 
 	public DocxVisitor(DocxTemplate template, File imagesDir) throws IOException, XmlException {
-		this(new XWPFDocument(template.getInputStream()), imagesDir);
+		this(new XWPFDocument(template.getInputStream()), new Properties(), imagesDir);
 	}
 
-	DocxVisitor(XWPFDocument document, File... imagesDir) throws IOException, XmlException {
+	public DocxVisitor(DocxTemplate template, Properties formatProperties, File imagesDir) throws IOException, XmlException {
+		this(new XWPFDocument(template.getInputStream()), formatProperties, imagesDir);
+	}
+
+	DocxVisitor(XWPFDocument document, Properties formatProperties, File... imagesDir) throws IOException, XmlException {
 		super();
 		log("constructor");
 
 		this.images = new Images();
 		this.imagesDir = imagesDir.length == 1 ? imagesDir[0] : new File(".");
 		this.document = document;
+
+		this.formatProperties = formatProperties;
 
 		log("-- Create document styles");
 		this.styles = new DocxStyles(document);
@@ -111,6 +125,8 @@ public class DocxVisitor extends CustomVisitor {
 		BigInteger rightMargin = (BigInteger) pageMargins.getRight();
 
 		this.contentPageWidth = ((BigInteger) pageSize.getW()).subtract(leftMargin).subtract(rightMargin);
+
+		this.topHeadingsCount = 0;
 	}
 
 	public XWPFDocument getDocument() {
@@ -122,10 +138,12 @@ public class DocxVisitor extends CustomVisitor {
 		log("visit heading");
 
 		if (heading.getLevel() == 1) {
-			log("Add page break before heading 1");
-			XWPFParagraph paragraph = document.createParagraph();
-			XWPFRun run = paragraph.createRun();
-			run.addBreak(org.apache.poi.xwpf.usermodel.BreakType.PAGE);
+			if (topHeadingsCount++ > 0) {
+				log("Add page break before heading 1");
+				XWPFParagraph paragraph = document.createParagraph();
+				XWPFRun run = paragraph.createRun();
+				run.addBreak(org.apache.poi.xwpf.usermodel.BreakType.PAGE);
+			}
 		}
 
 		log("-- Create paragraph");
@@ -204,16 +222,28 @@ public class DocxVisitor extends CustomVisitor {
 	@Override
 	public void visit(FencedCodeBlock fencedCodeBlock) {
 		log("visit code block");
+		log("fencedCodeBlock.getInfo(): ", fencedCodeBlock.getInfo());
 		if (!ignoreParagraph) {
-			log("-- Create paragraph");
-			currentParagraph = document.createParagraph();
-			log("-- Create run");
-			XWPFRun run = currentParagraph.createRun();
-			run.setText(fencedCodeBlock.getLiteral());
-			// TODO: use fencedCodeBlock.getInfo() to set style depending on language, e.g. java
+			Strings.lines(fencedCodeBlock.getLiteral()).forEach(line -> {
+				log("-- Create paragraph");
+				currentParagraph = document.createParagraph();
+				currentParagraph.setStyle(DocxStyles.getNoSpacing());
+				currentParagraph.setBorderLeft(Borders.SINGLE);
+
+				log("-- Create run");
+				XWPFRun run = currentParagraph.createRun();
+				run.setFontFamily("Consolas");
+				run.setFontSize(8);
+				run.setColor(Color.LIGHT_BLUE.name);
+				
+				CTText ctText = run.getCTR().addNewT();
+				ctText.setSpace(SpaceAttribute.Space.PRESERVE);
+				run.setText(line);
+			});
 		}
 		ignoreParagraph = false;
 		super.visit(fencedCodeBlock);
+		currentParagraph.setBorderLeft(Borders.NONE);
 	}
 
 	@Override
@@ -271,6 +301,11 @@ public class DocxVisitor extends CustomVisitor {
 		assert currentParagraph != null;
 		currentRun = currentParagraph.createHyperlinkRun(link.getDestination());
 
+		if ("false".equals(formatProperties.getProperty("link.enabled"))) {
+			super.visit(link);
+			return;
+		}
+
 		// <w:hyperlink r:id="rId7">
 		// ..<w:r>
 		// ....<w:rPr>
@@ -298,8 +333,7 @@ public class DocxVisitor extends CustomVisitor {
 		rStyle.setVal(DocxStyles.getLinkStyleId());
 		ctrPr.setRStyleArray(new CTString[] { rStyle });
 
-		// crazy: without next statement above w:rStyle is not written in document xml
-		// w:color
+		// crazy: without next statement above w:rStyle is not written in document xml w:color
 		ctrPr.addNewColor().setVal("0000FF");
 
 		// w:t
@@ -333,8 +367,10 @@ public class DocxVisitor extends CustomVisitor {
 			log("-- Add run picture:", imageFile);
 			XWPFPicture picture = run.addPicture(inputStream, pictureType(imageFile.getName()), imageFile.getName(), width, height);
 
-			log("-- Add shadow effect");
-			shadowEffect(picture);
+			if (!"false".equals(formatProperties.getProperty("image.shadow"))) {
+				log("-- Add shadow effect");
+				shadowEffect(picture);
+			}
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
