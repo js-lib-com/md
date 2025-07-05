@@ -1,4 +1,4 @@
-package com.jslib.md.docx;
+package com.jslib.md;
 
 import org.commonmark.ext.gfm.tables.TableBlock;
 import org.commonmark.ext.gfm.tables.TableBody;

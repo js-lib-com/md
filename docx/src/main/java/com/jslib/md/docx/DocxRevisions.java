@@ -6,6 +6,8 @@ import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.commonmark.ext.gfm.tables.TableCell;
 import org.commonmark.node.Text;
 
+import com.jslib.md.CustomVisitor;
+
 public class DocxRevisions extends CustomVisitor {
 	private final XWPFTable table;
 

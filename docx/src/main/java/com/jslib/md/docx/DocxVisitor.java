@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.List;
-import java.util.Properties;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -64,6 +63,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 
+import com.jslib.md.CustomVisitor;
 import com.jslib.md.docx.template.DocxTemplate;
 import com.jslib.md.docx.util.Color;
 import com.jslib.md.docx.util.Dimensions;
@@ -77,7 +77,7 @@ public class DocxVisitor extends CustomVisitor {
 	// the width of the page used for content display, i.e. page size minus left and right margins
 	private final BigInteger contentPageWidth;
 
-	private final Properties formatProperties;
+	private final ProjectProperties projectProperties;
 	@SuppressWarnings("unused")
 	private final DocxStyles styles;
 	private final DocxNumbering numbering;
@@ -89,18 +89,18 @@ public class DocxVisitor extends CustomVisitor {
 	private boolean blockQuoteDetected;
 
 	public DocxVisitor(DocxTemplate template) throws IOException, XmlException {
-		this(new XWPFDocument(template.getInputStream()), new Properties());
+		this(new XWPFDocument(template.getInputStream()), ProjectProperties.empty());
 	}
 
 	public DocxVisitor(DocxTemplate template, File imagesDir) throws IOException, XmlException {
-		this(new XWPFDocument(template.getInputStream()), new Properties(), imagesDir);
+		this(new XWPFDocument(template.getInputStream()), ProjectProperties.empty(), imagesDir);
 	}
 
-	public DocxVisitor(DocxTemplate template, Properties formatProperties, File imagesDir) throws IOException, XmlException {
-		this(new XWPFDocument(template.getInputStream()), formatProperties, imagesDir);
+	public DocxVisitor(DocxTemplate template, ProjectProperties projectProperties, File imagesDir) throws IOException, XmlException {
+		this(new XWPFDocument(template.getInputStream()), projectProperties, imagesDir);
 	}
 
-	DocxVisitor(XWPFDocument document, Properties formatProperties, File... imagesDir) throws IOException, XmlException {
+	DocxVisitor(XWPFDocument document, ProjectProperties projectProperties, File... imagesDir) throws IOException, XmlException {
 		super();
 		log("constructor");
 
@@ -108,7 +108,7 @@ public class DocxVisitor extends CustomVisitor {
 		this.imagesDir = imagesDir.length == 1 ? imagesDir[0] : new File(".");
 		this.document = document;
 
-		this.formatProperties = formatProperties;
+		this.projectProperties = projectProperties;
 
 		log("-- Create document styles");
 		this.styles = new DocxStyles(document);
@@ -301,7 +301,7 @@ public class DocxVisitor extends CustomVisitor {
 		assert currentParagraph != null;
 		currentRun = currentParagraph.createHyperlinkRun(link.getDestination());
 
-		if ("false".equals(formatProperties.getProperty("link.enabled"))) {
+		if (!projectProperties.linkEnabled) {
 			super.visit(link);
 			return;
 		}
@@ -367,7 +367,7 @@ public class DocxVisitor extends CustomVisitor {
 			log("-- Add run picture:", imageFile);
 			XWPFPicture picture = run.addPicture(inputStream, pictureType(imageFile.getName()), imageFile.getName(), width, height);
 
-			if (!"false".equals(formatProperties.getProperty("image.shadow"))) {
+			if (projectProperties.imageShadow) {
 				log("-- Add shadow effect");
 				shadowEffect(picture);
 			}

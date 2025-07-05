@@ -86,7 +86,7 @@ public class DocxVisitorTest {
 				row.getCell(2).setText("Create user manual document for Call Radar application.");
 			}
 
-			DocxVisitor visitor = new DocxVisitor(document, new Properties());
+			DocxVisitor visitor = new DocxVisitor(document, ProjectProperties.empty());
 			parser.parse(markdown).accept(visitor);
 
 			try (FileOutputStream outputStream = new FileOutputStream(DOCUMENT_FILE)) {
