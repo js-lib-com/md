@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>com.js-lib.md</groupId>
 		<artifactId>project</artifactId>
-		<version>${revision}</version>
+		<version>1.0.0</version>
 	</parent>
 	<artifactId>commons</artifactId>
 
@@ -13,17 +13,10 @@
 		<dependency>
 			<groupId>org.commonmark</groupId>
 			<artifactId>commonmark</artifactId>
-			<version>0.20.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.commonmark</groupId>
 			<artifactId>commonmark-ext-gfm-tables</artifactId>
-			<version>0.17.0</version>
 		</dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>2.0.12</version>
-        </dependency>
 	</dependencies>
 </project>

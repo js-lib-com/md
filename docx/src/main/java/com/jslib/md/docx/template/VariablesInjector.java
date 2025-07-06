@@ -10,7 +10,12 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.util.Properties;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 class VariablesInjector implements ITransformer {
+	private static final Logger log = LoggerFactory.getLogger(VariablesInjector.class);
+	
 	private final ByteBuffer byteBuffer;
 	private final CharBuffer charBuffer;
 	private final CharsetDecoder decoder;
@@ -22,6 +27,7 @@ class VariablesInjector implements ITransformer {
 	private VariablesInjector.ParserState parserState;
 
 	public VariablesInjector(int bufferCapacity, Properties properties) {
+		log.trace("VariablesInjector(int bufferCapacity, Properties properties)");
 		this.byteBuffer = ByteBuffer.allocate(bufferCapacity + 4);
 		this.charBuffer = CharBuffer.allocate(bufferCapacity);
 		this.charBuffer.flip();
@@ -119,7 +125,7 @@ class VariablesInjector implements ITransformer {
 				String variableName = variableBuilder.toString();
 				variableBuilder.setLength(0);
 				variable.setValue(properties.getOrDefault(variableName, variableName).toString());
-				DocxTemplate.log("-- Replace variable value:", variableName, variable);
+				log.debug("Replace variable value: {}: {}", variableName, variable);
 
 				parserState = ParserState.WRITE_VARIABLE;
 				// fall through next case

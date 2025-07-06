@@ -11,7 +11,12 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class DocxTemplate {
+	private static final Logger log = LoggerFactory.getLogger(DocxTemplate.class);
+	
 	private final static int BYTES_BUFFER_LENGTH = 1024;
 	private final static int QUEUE_CAPACITY = 4096;
 
@@ -20,16 +25,16 @@ public class DocxTemplate {
 	private final Thread thread;
 
 	public DocxTemplate(Properties properties) throws InterruptedException {
-		log("constructor");
+		log.trace("DocxTemplate(Properties properties)");
 
-		log("-- Create queue");
+		log.debug("Create queue");
 		this.queue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
-		log("-- Create queue reader");
+		log.debug("Create queue reader");
 		this.queueReader = new QueueReader(queue);
 
-		log("-- Create input stream:template.docx");
+		log.debug("Create input stream:template.docx");
 		InputStream inputStream = getClass().getResourceAsStream("/template.docx");
-		log("-- Create output stream:queue writer");
+		log.debug("Create output stream:queue writer");
 		QueueWriter queueWriter = new QueueWriter(queue);
 
 		ITransformer transformer = new VariablesInjector(BYTES_BUFFER_LENGTH, properties);
@@ -37,12 +42,12 @@ public class DocxTemplate {
 
 		this.thread = new Thread(runnable);
 		this.thread.setDaemon(false);
-		log("-- Start processor thread");
+		log.debug("Start processor thread");
 		this.thread.start();
 	}
 
 	public InputStream getInputStream() {
-		log("get input stream");
+		log.trace("getInputStream()");
 		return queueReader;
 	}
 
@@ -61,7 +66,7 @@ public class DocxTemplate {
 
 		@Override
 		public void run() {
-			log("run processor thread");
+			log.trace("run()");
 
 			byte[] buffer = new byte[BYTES_BUFFER_LENGTH];
 			int bytesRead;
@@ -69,11 +74,11 @@ public class DocxTemplate {
 			try (ZipInputStream zipInput = new ZipInputStream(inputStream); ZipOutputStream zipOutput = new ZipOutputStream(outputStream);) {
 				ZipEntry entryInput;
 				while ((entryInput = zipInput.getNextEntry()) != null) {
-					log("-- Retrieve input zip entry:", entryInput.getName());
+					log.debug("Retrieve input zip entry:", entryInput.getName());
 
 					ZipEntry entryOutput = new ZipEntry(entryInput.getName());
 					zipOutput.putNextEntry(entryOutput);
-					log("-- Create ouput zip entry:", entryOutput.getName());
+					log.debug("Create ouput zip entry:", entryOutput.getName());
 
 					while ((bytesRead = zipInput.read(buffer)) != -1) {
 						transformer.write(buffer, 0, bytesRead);
@@ -83,31 +88,23 @@ public class DocxTemplate {
 						}
 					}
 
-					log("-- Close input zip entry");
+					log.debug("Close input zip entry");
 					zipInput.closeEntry();
-					log("-- Close output zip entry");
+					log.debug("Close output zip entry");
 					zipOutput.closeEntry();
-					log("-- Output zip entry size:", entryOutput.getSize());
+					log.debug("Output zip entry size: {}", entryOutput.getSize());
 				}
 
-				log("-- Auto-close input zip");
-				log("-- Auto-close output zip");
+				log.debug("Auto-close input zip");
+				log.debug("Auto-close output zip");
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 
-			log("-- Close queue reader");
+			log.debug("Close queue reader");
 			queueReader.close();
 
-			log("close processor thread");
+			log.debug("close processor thread");
 		}
-	}
-
-	static final void log(Object... objects) {
-		for (Object object : objects) {
-			System.out.print(object instanceof String ? (String) object : object.toString());
-			System.out.print(' ');
-		}
-		System.out.println();
 	}
 }

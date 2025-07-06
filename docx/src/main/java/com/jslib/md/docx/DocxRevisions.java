@@ -5,10 +5,14 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.commonmark.ext.gfm.tables.TableCell;
 import org.commonmark.node.Text;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CustomVisitor;
 
 public class DocxRevisions extends CustomVisitor {
+	private static final Logger log = LoggerFactory.getLogger(DocxRevisions.class);
+	
 	private final XWPFTable table;
 
 	private boolean cellText;
@@ -16,6 +20,7 @@ public class DocxRevisions extends CustomVisitor {
 	private String[] revisionArguments;
 
 	public DocxRevisions(XWPFDocument document) {
+		log.trace("DocxRevisions(XWPFDocument document)");
 		this.table = document.getTables().get(1);
 		this.cellText = false;
 		this.revisionArguments = new String[3];
@@ -23,14 +28,14 @@ public class DocxRevisions extends CustomVisitor {
 
 	@Override
 	public void visit(TableCell mdCell) {
-		log("visit table cell");
+		log.trace("visit(TableCell mdCell)");
 		cellText = !mdCell.isHeader();
 		super.visit(mdCell);
 	}
 
 	@Override
 	public void visit(Text text) {
-		log("visit text");
+		log.trace("visit(Text text)");
 		if (!cellText) {
 			super.visit(text);
 			return;
@@ -44,15 +49,5 @@ public class DocxRevisions extends CustomVisitor {
 			row.getCell(1).setText(revisionArguments[1]);
 			row.getCell(2).setText(revisionArguments[2]);
 		}
-	}
-
-	// ------------------------------------------------------------------------
-
-	private static final void log(Object... objects) {
-		for (Object object : objects) {
-			System.out.print(object instanceof String ? (String) object : object.toString());
-			System.out.print(' ');
-		}
-		System.out.println();
 	}
 }

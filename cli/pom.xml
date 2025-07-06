@@ -3,7 +3,7 @@
 	<parent>
 		<groupId>com.js-lib.md</groupId>
 		<artifactId>project</artifactId>
-		<version>${revision}</version>
+		<version>1.0.0</version>
 	</parent>
 	<artifactId>cli</artifactId>
 
@@ -11,22 +11,14 @@
 		<dependency>
 			<groupId>com.js-lib.md</groupId>
 			<artifactId>docx</artifactId>
-			<version>1.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.js-lib.md</groupId>
 			<artifactId>xlsx</artifactId>
-			<version>1.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.js-lib</groupId>
 			<artifactId>js-json</artifactId>
-			<version>2.1.0</version>
 		</dependency>
-	    <dependency>
-	        <groupId>org.slf4j</groupId>
-	        <artifactId>slf4j-simple</artifactId>
-	        <version>2.0.17</version>
-	    </dependency>
 	</dependencies>
 </project>

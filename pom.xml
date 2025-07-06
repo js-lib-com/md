@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.js-lib.md</groupId>
 	<artifactId>project</artifactId>
-	<version>${revision}</version>
+	<version>1.0.0</version>
 	<packaging>pom</packaging>
 
 	<modules>
@@ -15,46 +15,147 @@
 	</modules>
 
 	<properties>
-		<revision>1.0.0</revision>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-  		<maven.compiler.source>11</maven.compiler.source>
-  		<maven.compiler.target>11</maven.compiler.target>
-	</properties>
+   	</properties>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.js-lib.md</groupId>
+				<artifactId>commons</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.js-lib.md</groupId>
+				<artifactId>docx</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.js-lib.md</groupId>
+				<artifactId>xlsx</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+		
+			<dependency>
+				<groupId>com.js-lib</groupId>
+				<artifactId>js-json</artifactId>
+				<version>2.1.0</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.poi</groupId>
+				<artifactId>poi</artifactId>
+				<version>5.2.3</version>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.poi</groupId>
+				<artifactId>poi-ooxml</artifactId>
+				<version>5.2.0</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.commonmark</groupId>
+				<artifactId>commonmark</artifactId>
+				<version>0.20.0</version>
+			</dependency>
+			<dependency>
+				<groupId>org.commonmark</groupId>
+				<artifactId>commonmark-ext-gfm-tables</artifactId>
+				<version>0.17.0</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.im4java</groupId>
+				<artifactId>im4java</artifactId>
+				<version>1.4.0</version>
+			</dependency>
+			<dependency>
+				<groupId>net.coobird</groupId>
+				<artifactId>thumbnailator</artifactId>
+				<version>0.4.14</version>
+			</dependency>
+
+	        <dependency>
+	            <groupId>org.slf4j</groupId>
+	            <artifactId>slf4j-api</artifactId>
+	            <version>2.0.12</version>
+	        </dependency>
+
+			<dependency>
+				<groupId>junit</groupId>
+				<artifactId>junit</artifactId>
+				<version>4.13.1</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.hamcrest</groupId>
+				<artifactId>hamcrest-all</artifactId>
+				<version>1.3</version>
+				<scope>test</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.mockito</groupId>
+				<artifactId>mockito-core</artifactId>
+				<version>4.6.1</version>
+				<scope>test</scope>
+			</dependency>
+		    <dependency>
+		        <groupId>org.slf4j</groupId>
+		        <artifactId>slf4j-simple</artifactId>
+		        <version>2.0.17</version>
+		        <scope>test</scope>
+		    </dependency>
+			<dependency>
+			    <groupId>org.apache.logging.log4j</groupId>
+			    <artifactId>log4j-to-slf4j</artifactId>
+			    <version>2.20.0</version>
+		        <scope>test</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.hamcrest</groupId>
+			<artifactId>hamcrest-all</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+		</dependency>
+	    <dependency>
+	        <groupId>org.slf4j</groupId>
+	        <artifactId>slf4j-simple</artifactId>
+	    </dependency>
+		<dependency>
+		    <groupId>org.apache.logging.log4j</groupId>
+		    <artifactId>log4j-to-slf4j</artifactId>
+		</dependency>
+	</dependencies>
+	
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.14.0</version>
-			</plugin>
-			<!--
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>flatten-maven-plugin</artifactId>
-				<version>1.0.0</version>
 				<configuration>
-					<updatePomFile>true</updatePomFile>
+					<source>11</source>
+					<target>11</target>
+					<encoding>UTF-8</encoding>
+					<verbose>true</verbose>
 				</configuration>
-				<executions>
-					<execution>
-						<id>flatten</id>
-						<phase>process-resources</phase>
-						<goals>
-							<goal>flatten</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>flatten.clean</id>
-						<phase>clean</phase>
-						<goals>
-							<goal>clean</goal>
-						</goals>
-					</execution>
-				</executions>
 			</plugin>
-			-->
 		</plugins>
 	</build>
 

@@ -3,7 +3,7 @@
   <parent>
     <groupId>com.js-lib.md</groupId>
     <artifactId>project</artifactId>
-    <version>${revision}</version>
+    <version>1.0.0</version>
   </parent>
   <artifactId>etl</artifactId>
 </project>

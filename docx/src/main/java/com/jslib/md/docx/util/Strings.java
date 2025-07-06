@@ -3,11 +3,9 @@ package com.jslib.md.docx.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.jslib.util.Params;
-
-public class Strings extends com.jslib.util.Strings {
+public class Strings {
 	public static List<String> lines(String text) {
-		Params.notNull(text, "Text");
+		assert text != null: "Text argument is null";
 
 		List<String> lines = new ArrayList<>();
 		StringBuilder lineBuilder = new StringBuilder();

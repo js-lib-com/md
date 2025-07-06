@@ -6,8 +6,6 @@ import java.util.Properties;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.jslib.md.docx.template.VariablesInjector;
-
 public class VariablesInjectorTest {
 	private VariablesInjector injector;
 
