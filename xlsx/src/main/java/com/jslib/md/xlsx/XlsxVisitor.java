@@ -99,11 +99,11 @@ public class XlsxVisitor extends CustomVisitor {
 
 		String text = null;
 		Node node = cell.getFirstChild();
+		if(node instanceof Link) {
+			node = node.getFirstChild();
+		}
 		if (node instanceof Text) {
 			text = ((Text)node).getLiteral();
-		}
-		else if (node instanceof Link) {
-			text = ((Link)node).getDestination();
 		}
 		log.trace("Cell text: {}", text);
 
