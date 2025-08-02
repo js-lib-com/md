@@ -36,25 +36,41 @@ public class DocxGenerator implements CommandHandler {
 			}
 		}
 		ProjectProperties projectProperties = new ProjectProperties(properties);
-		File sourceDir = projectProperties.sourceDir != null ? new File(documentDir, projectProperties.sourceDir) : null;
 
-		String documentFileName = "document.md";
-		String documentPropertiesFileName = "document.properties";
-		String revisionsFileName = "revisions.md";
-
-		if (language != null) {
-			documentFileName = String.format("document_%s.md", language);
-			documentPropertiesFileName = String.format("document_%s.properties", language);
-			revisionsFileName = String.format("revisions_%s.md", language);
+		String targetFileName = projectProperties.fileName + ".docx";
+		
+		File documentPropertiesFile = new File(documentDir, "document.properties");
+		if (!documentPropertiesFile.exists()) {
+			System.out.printf("Missing document properties file %s .\r\n", documentPropertiesFile);
+			return;
+		}
+		File revisionsFile = new File(documentDir, "revisions.md");
+		if (!revisionsFile.exists()) {
+			System.out.printf("Missing document revisions file %s .\r\n", revisionsFile);
+			return;
 		}
 
-		File markdownFile;
-		if (sourceDir != null) {
-			markdownFile = File.createTempFile("DocxGenerator", null);
-			markdownFile.deleteOnExit();
+		if (language != null) {
+			targetFileName = String.format("%s_%s.docx", projectProperties.fileName, language);
+
+			File languageDocumentPropertiesFile = new File(documentDir, String.format("document_%s.properties", language));
+			if(languageDocumentPropertiesFile.exists()) {
+				documentPropertiesFile = languageDocumentPropertiesFile;
+			}
+			File languageRevisionsFile = new File(documentDir, String.format("revisions_%s.md", language));
+			if(languageRevisionsFile.exists()) {
+				revisionsFile = languageRevisionsFile;
+			}
+		}
+
+		File sourceFile;
+		if (projectProperties.sourceDir != null) {
+			File sourceDir = new File(documentDir, projectProperties.sourceDir);
+			sourceFile = File.createTempFile("DocxGenerator", null);
+			sourceFile.deleteOnExit();
 			for (File file : sourceFiles(sourceDir, language)) {
 				String line;
-				try (BufferedReader reader = reader(file); BufferedWriter appender = appender(markdownFile)) {
+				try (BufferedReader reader = reader(file); BufferedWriter appender = appender(sourceFile)) {
 					while ((line = reader.readLine()) != null) {
 						appender.write(line);
 						appender.newLine();
@@ -63,33 +79,26 @@ public class DocxGenerator implements CommandHandler {
 				}
 			}
 		} else {
-			markdownFile = new File(documentDir, documentFileName);
+			String sourceFileName = "document.md";
+			if (language != null) {
+				sourceFileName = String.format("document_%s.md", language);
+			}
+			sourceFile = new File(documentDir, sourceFileName);
 		}
-		if (!markdownFile.exists()) {
-			System.out.printf("Missing markdown file %s .\r\n", markdownFile);
+		if (!sourceFile.exists()) {
+			System.out.printf("Missing source file %s .\r\n", sourceFile);
 			return;
 		}
 
-		int extensionPosition = markdownFile.getName().lastIndexOf('.');
+		int extensionPosition = sourceFile.getName().lastIndexOf('.');
 		if (extensionPosition == -1) {
-			System.out.printf("Missing extension on file %s .\r\n", markdownFile);
+			System.out.printf("Missing extension on file %s .\r\n", sourceFile);
 			return;
 		}
 
-		File documentPropertiesFile = new File(documentDir, documentPropertiesFileName);
-		if (!documentPropertiesFile.exists()) {
-			System.out.printf("Missing document properties file %s .\r\n", documentPropertiesFile);
-			return;
-		}
 		Properties documentProperties = new Properties();
 		try (Reader reader = new FileReader(documentPropertiesFile)) {
 			documentProperties.load(reader);
-		}
-
-		File revisionsFile = new File(documentDir, revisionsFileName);
-		if (!revisionsFile.exists()) {
-			System.out.printf("Missing document revisions file %s .\r\n", revisionsFile);
-			return;
 		}
 
 		List<Extension> extensions = Arrays.asList(TablesExtension.create());
@@ -103,11 +112,11 @@ public class DocxGenerator implements CommandHandler {
 			parser.parseReader(reader).accept(revisions);
 		}
 
-		try (InputStreamReader reader = new InputStreamReader(new FileInputStream(markdownFile), "UTF-8")) {
+		try (InputStreamReader reader = new InputStreamReader(new FileInputStream(sourceFile), "UTF-8")) {
 			parser.parseReader(reader).accept(documentVisitor);
 		}
 
-		try (FileOutputStream outputStream = new FileOutputStream(new File(documentDir, projectProperties.fileName + ".docx"))) {
+		try (FileOutputStream outputStream = new FileOutputStream(new File(documentDir, targetFileName))) {
 			documentVisitor.getDocument().write(outputStream);
 		}
 	}
