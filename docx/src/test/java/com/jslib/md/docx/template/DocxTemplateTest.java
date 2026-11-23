@@ -97,6 +97,31 @@ public class DocxTemplateTest {
 		assertThat(entries.get("customXml/itemProps1.xml"), containsString("{55AF091B-3C7A-41E3-B477-F2FDAA23CFDA}"));
 	}
 
+	@Test
+	public void GivenAllDocumentProperties_WhenCreate_ThenFillDocumentMetadataAndLeaveNoPlaceholders() throws IOException {
+		// given
+		for (String name : new String[] { "title", "subtitle", "author", "date", "abstract", "version" }) {
+			properties.setProperty("document." + name, "value-" + name);
+		}
+		properties.setProperty("company.name", "value-company-name");
+		properties.setProperty("company.logotype", "value-company-logotype");
+
+		// when
+		DocxTemplate template = new DocxTemplate(properties);
+
+		// then
+		Map<String, String> entries = entries(template.getInputStream());
+		assertThat(entries.get("docProps/core.xml"), containsString("<dc:title>value-title</dc:title>"));
+		assertThat(entries.get("docProps/core.xml"), containsString("<dc:subject>value-subtitle</dc:subject>"));
+		assertThat(entries.get("docProps/core.xml"), containsString("<dc:creator>value-author</dc:creator>"));
+		assertThat(entries.get("docProps/app.xml"), containsString("<vt:lpstr>value-title</vt:lpstr>"));
+		assertThat(entries.get("customXml/item1.xml"), containsString("<PublishDate>value-date</PublishDate>"));
+		assertThat(entries.get("customXml/item1.xml"), containsString("<Abstract>value-abstract</Abstract>"));
+		for (Map.Entry<String, String> entry : entries.entrySet()) {
+			assertThat(entry.getKey(), entry.getValue(), not(containsString("{{")));
+		}
+	}
+
 	private static Map<String, String> entries(InputStream stream) throws IOException {
 		Map<String, String> entries = new HashMap<>();
 		try (ZipInputStream zip = new ZipInputStream(stream)) {
