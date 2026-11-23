@@ -7,11 +7,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 
@@ -85,7 +87,7 @@ public class DocxGenerator implements CommandHandler {
 			File sourceDir = new File(documentDir, projectProperties.sourceDir);
 			sourceFile = File.createTempFile("DocxGenerator", null);
 			sourceFile.deleteOnExit();
-			for (File file : sourceFiles(sourceDir, language)) {
+			for (File file : sourceFiles(sourceDir, language, projectProperties.languages)) {
 				String line;
 				try (BufferedReader reader = reader(file); BufferedWriter appender = appender(sourceFile)) {
 					while ((line = reader.readLine()) != null) {
@@ -138,20 +140,33 @@ public class DocxGenerator implements CommandHandler {
 		}
 	}
 
-	private File[] sourceFiles(File sourceDir, String language) {
+	/**
+	 * Markdown source files for requested language, sorted by name. For default language, i.e. null language argument,
+	 * exclude files translated to any of the configured languages.
+	 */
+	static File[] sourceFiles(File sourceDir, String language, String[] languages) throws IOException {
 		File[] files = sourceDir.listFiles(file -> {
-			if (!file.getName().endsWith(".md")) {
+			String name = file.getName();
+			if (!name.endsWith(".md")) {
 				return false;
 			}
-			if (file.getName().startsWith("revisions")) {
+			if (name.startsWith("revisions")) {
 				return false;
 			}
-			if (language == null) {
-				return true;
+			if (language != null) {
+				return name.endsWith('_' + language + ".md");
 			}
-			return file.getName().endsWith('_' + language + ".md");
+			for (String translation : languages) {
+				if (name.endsWith('_' + translation + ".md")) {
+					return false;
+				}
+			}
+			return true;
 		});
-		assert files != null : "Fail to list source directory";
+		if (files == null) {
+			throw new IOException("Fail to list source directory " + sourceDir);
+		}
+		Arrays.sort(files, Comparator.comparing(File::getName));
 		return files;
 	}
 
