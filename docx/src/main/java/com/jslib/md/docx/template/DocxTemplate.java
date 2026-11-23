@@ -1,12 +1,14 @@
 package com.jslib.md.docx.template;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Properties;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -14,97 +16,96 @@ import java.util.zip.ZipOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * DOCX template with {{variable}} placeholders replaced by document properties. Template archive is processed in memory:
+ * XML parts have variables injected, with values XML escaped, while all other parts are copied unchanged. If a variable
+ * has no property, its name is used as value.
+ */
 public class DocxTemplate {
 	private static final Logger log = LoggerFactory.getLogger(DocxTemplate.class);
-	
-	private final static int BYTES_BUFFER_LENGTH = 1024;
-	private final static int QUEUE_CAPACITY = 4096;
 
-	private final BlockingQueue<Byte> queue;
-	private final QueueReader queueReader;
-	private final Thread thread;
+	private static final String TEMPLATE_RESOURCE = "/template.docx";
+	private static final Pattern VARIABLE = Pattern.compile("\\{\\{([^{}]+)\\}\\}");
 
-	public DocxTemplate(Properties properties) throws InterruptedException {
+	private final byte[] document;
+
+	public DocxTemplate(Properties properties) throws IOException {
+		this(DocxTemplate.class.getResourceAsStream(TEMPLATE_RESOURCE), properties);
 		log.trace("DocxTemplate(Properties properties)");
+	}
 
-		log.debug("Create queue");
-		this.queue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
-		log.debug("Create queue reader");
-		this.queueReader = new QueueReader(queue);
+	DocxTemplate(InputStream templateStream, Properties properties) throws IOException {
+		if (templateStream == null) {
+			throw new IOException("Missing template resource " + TEMPLATE_RESOURCE);
+		}
 
-		log.debug("Create input stream:template.docx");
-		InputStream inputStream = getClass().getResourceAsStream("/template.docx");
-		log.debug("Create output stream:queue writer");
-		QueueWriter queueWriter = new QueueWriter(queue);
-
-		ITransformer transformer = new VariablesInjector(BYTES_BUFFER_LENGTH, properties);
-		Runnable runnable = new ProcessorThread(queueReader, inputStream, queueWriter, transformer);
-
-		this.thread = new Thread(runnable);
-		this.thread.setDaemon(false);
-		log.debug("Start processor thread");
-		this.thread.start();
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+		try (ZipInputStream zipInput = new ZipInputStream(templateStream); ZipOutputStream zipOutput = new ZipOutputStream(buffer)) {
+			ZipEntry entry;
+			while ((entry = zipInput.getNextEntry()) != null) {
+				log.debug("Process template entry: {}", entry.getName());
+				byte[] bytes = zipInput.readAllBytes();
+				if (isXml(entry.getName())) {
+					bytes = inject(new String(bytes, UTF_8), properties).getBytes(UTF_8);
+				}
+				zipOutput.putNextEntry(new ZipEntry(entry.getName()));
+				zipOutput.write(bytes);
+				zipOutput.closeEntry();
+			}
+		}
+		this.document = buffer.toByteArray();
 	}
 
 	public InputStream getInputStream() {
 		log.trace("getInputStream()");
-		return queueReader;
+		return new ByteArrayInputStream(document);
 	}
 
-	private static class ProcessorThread implements Runnable {
-		private final QueueReader queueReader;
-		private final InputStream inputStream;
-		private OutputStream outputStream;
-		private final ITransformer transformer;
-
-		public ProcessorThread(QueueReader queueReader, InputStream inputStream, OutputStream outputStream, ITransformer transformer) {
-			this.queueReader = queueReader;
-			this.inputStream = new BufferedInputStream(inputStream);
-			this.outputStream = new BufferedOutputStream(outputStream);
-			this.transformer = transformer;
-		}
-
-		@Override
-		public void run() {
-			log.trace("run()");
-
-			byte[] buffer = new byte[BYTES_BUFFER_LENGTH];
-			int bytesRead;
-
-			try (ZipInputStream zipInput = new ZipInputStream(inputStream); ZipOutputStream zipOutput = new ZipOutputStream(outputStream);) {
-				ZipEntry entryInput;
-				while ((entryInput = zipInput.getNextEntry()) != null) {
-					log.debug("Retrieve input zip entry:", entryInput.getName());
-
-					ZipEntry entryOutput = new ZipEntry(entryInput.getName());
-					zipOutput.putNextEntry(entryOutput);
-					log.debug("Create ouput zip entry:", entryOutput.getName());
-
-					while ((bytesRead = zipInput.read(buffer)) != -1) {
-						transformer.write(buffer, 0, bytesRead);
-						while ((bytesRead = transformer.read(buffer)) > 0) {
-							//System.out.print(new String(buffer, 0, bytesRead, Charset.forName("UTF-8")));
-							zipOutput.write(buffer, 0, bytesRead);
-						}
-					}
-
-					log.debug("Close input zip entry");
-					zipInput.closeEntry();
-					log.debug("Close output zip entry");
-					zipOutput.closeEntry();
-					log.debug("Output zip entry size: {}", entryOutput.getSize());
-				}
-
-				log.debug("Auto-close input zip");
-				log.debug("Auto-close output zip");
-			} catch (Exception e) {
-				e.printStackTrace();
+	static String inject(String xml, Properties properties) {
+		Matcher matcher = VARIABLE.matcher(xml);
+		StringBuilder builder = new StringBuilder();
+		while (matcher.find()) {
+			String name = matcher.group(1);
+			String value = properties.getProperty(name);
+			if (value == null) {
+				log.warn("Missing value for template variable {}", name);
+				value = name;
 			}
-
-			log.debug("Close queue reader");
-			queueReader.close();
-
-			log.debug("close processor thread");
+			log.debug("Replace variable value: {}: {}", name, value);
+			matcher.appendReplacement(builder, Matcher.quoteReplacement(escapeXml(value)));
 		}
+		matcher.appendTail(builder);
+		return builder.toString();
+	}
+
+	static String escapeXml(String value) {
+		StringBuilder builder = new StringBuilder(value.length());
+		for (int i = 0; i < value.length(); ++i) {
+			char c = value.charAt(i);
+			switch (c) {
+			case '&':
+				builder.append("&amp;");
+				break;
+			case '<':
+				builder.append("&lt;");
+				break;
+			case '>':
+				builder.append("&gt;");
+				break;
+			case '"':
+				builder.append("&quot;");
+				break;
+			case '\'':
+				builder.append("&apos;");
+				break;
+			default:
+				builder.append(c);
+			}
+		}
+		return builder.toString();
+	}
+
+	private static boolean isXml(String entryName) {
+		return entryName.endsWith(".xml") || entryName.endsWith(".rels");
 	}
 }
