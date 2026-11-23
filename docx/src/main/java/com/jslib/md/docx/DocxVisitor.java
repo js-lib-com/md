@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -68,11 +69,14 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTString;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblGrid;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblLayoutType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblLook;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblLayoutType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -773,17 +777,22 @@ public class DocxVisitor extends CustomVisitor {
 		assert tableRowsCount > 0;
 		int tableColumnsCount = currentTable.getRow(0).getTableCells().size();
 
-		CTOnOff noWrapFlag = CTOnOff.Factory.newInstance();
-		noWrapFlag.setVal("1");
+		if (projectProperties.tableAutoFit) {
+			autoFit(currentTable, tableColumnsCount);
+		} else {
+			// all but last column fit their content without wrapping; last column takes remaining page width
+			CTOnOff noWrapFlag = CTOnOff.Factory.newInstance();
+			noWrapFlag.setVal("1");
 
-		for (XWPFTableRow row : currentTable.getRows()) {
-			for (int columnIndex = 0; columnIndex < tableColumnsCount - 1; ++columnIndex) {
-				XWPFTableCell cell = row.getTableCells().get(columnIndex);
-				CTTcPr properties = cell.getCTTc().getTcPr();
-				if (properties == null) {
-					properties = cell.getCTTc().addNewTcPr();
+			for (XWPFTableRow row : currentTable.getRows()) {
+				for (int columnIndex = 0; columnIndex < tableColumnsCount - 1; ++columnIndex) {
+					XWPFTableCell cell = row.getTableCells().get(columnIndex);
+					CTTcPr properties = cell.getCTTc().getTcPr();
+					if (properties == null) {
+						properties = cell.getCTTc().addNewTcPr();
+					}
+					properties.setNoWrap(noWrapFlag);
 				}
-				properties.setNoWrap(noWrapFlag);
 			}
 		}
 
@@ -792,6 +801,49 @@ public class DocxVisitor extends CustomVisitor {
 		space.setSpacingAfter(0);
 		space.setSpacingBefore(0);
 		space.createRun().setFontSize(0);
+	}
+
+	/**
+	 * Set columns width, in percent, proportional with the quantity of text in every column but not less than minimal
+	 * column width from project properties. Table layout is fixed so that word processors use computed widths.
+	 */
+	private void autoFit(XWPFTable table, int columnsCount) {
+		List<List<String>> texts = new ArrayList<>();
+		for (XWPFTableRow row : table.getRows()) {
+			List<String> rowTexts = new ArrayList<>();
+			for (XWPFTableCell cell : row.getTableCells()) {
+				rowTexts.add(cell.getText());
+			}
+			texts.add(rowTexts);
+		}
+		int[] widths = TableColumns.widths(texts, projectProperties.tableColumnMinWidth);
+		log.debug("Set table columns width, in fiftieths of percent: {}", Arrays.toString(widths));
+
+		CTTblPr tblPr = table.getCTTbl().getTblPr();
+		CTTblLayoutType layout = tblPr.isSetTblLayout() ? tblPr.getTblLayout() : tblPr.addNewTblLayout();
+		layout.setType(STTblLayoutType.FIXED);
+
+		// fixed layout uses table grid, in twips, computed from page content width
+		CTTblGrid grid = table.getCTTbl().getTblGrid();
+		if (grid == null) {
+			grid = table.getCTTbl().addNewTblGrid();
+		}
+		while (grid.sizeOfGridColArray() > 0) {
+			grid.removeGridCol(0);
+		}
+		for (int width : widths) {
+			grid.addNewGridCol().setW(contentPageWidth.multiply(BigInteger.valueOf(width)).divide(BigInteger.valueOf(TableColumns.FULL_WIDTH)));
+		}
+
+		for (XWPFTableRow row : table.getRows()) {
+			List<XWPFTableCell> cells = row.getTableCells();
+			for (int column = 0; column < Math.min(columnsCount, cells.size()); ++column) {
+				CTTcPr tcPr = cells.get(column).getCTTc().isSetTcPr() ? cells.get(column).getCTTc().getTcPr() : cells.get(column).getCTTc().addNewTcPr();
+				CTTblWidth tcW = tcPr.isSetTcW() ? tcPr.getTcW() : tcPr.addNewTcW();
+				tcW.setType(STTblWidth.PCT);
+				tcW.setW(BigInteger.valueOf(widths[column]));
+			}
+		}
 	}
 
 	@Override
