@@ -1,4 +1,4 @@
-package com.jslib.md.docx;
+package com.jslib.md;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;

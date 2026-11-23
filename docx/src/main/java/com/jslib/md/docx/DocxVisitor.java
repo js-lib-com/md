@@ -84,6 +84,7 @@ import org.slf4j.LoggerFactory;
 import com.jslib.md.CustomVisitor;
 import com.jslib.md.InlineHtml;
 import com.jslib.md.InlineHtml.Format;
+import com.jslib.md.TableColumns;
 import com.jslib.md.docx.template.DocxTemplate;
 import com.jslib.md.docx.util.Color;
 import com.jslib.md.docx.util.Dimensions;

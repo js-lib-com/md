@@ -7,11 +7,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -24,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CommandHandler;
+import com.jslib.md.TableColumns;
 
 public class XlsxGenerator implements CommandHandler {
 	private static final Logger log = LoggerFactory.getLogger(XlsxGenerator.class);
@@ -68,7 +71,7 @@ public class XlsxGenerator implements CommandHandler {
 				String fileName = markdownFile.getName();
 				Sheet sheet = workbook.createSheet(sheetName(workbook, fileName.substring(0, fileName.length() - 3)));
 				try (InputStreamReader reader = new InputStreamReader(new FileInputStream(markdownFile), StandardCharsets.UTF_8)) {
-					XlsxVisitor visitor = new XlsxVisitor(sheet);
+					XlsxVisitor visitor = new XlsxVisitor(sheet, projectProperties.tableAutoFit);
 					parser.parseReader(reader).accept(visitor);
 				}
 
@@ -78,8 +81,12 @@ public class XlsxGenerator implements CommandHandler {
 					workbook.removeSheetAt(workbook.getSheetIndex(sheet));
 					continue;
 				}
-				for (int columnIndex = 0; columnIndex < headerRow.getLastCellNum(); columnIndex++) {
-					sheet.autoSizeColumn(columnIndex);
+				if (projectProperties.tableAutoFit) {
+					autoFit(sheet, headerRow.getLastCellNum(), projectProperties);
+				} else {
+					for (int columnIndex = 0; columnIndex < headerRow.getLastCellNum(); columnIndex++) {
+						sheet.autoSizeColumn(columnIndex);
+					}
 				}
 			}
 			if (workbook.getNumberOfSheets() == 0) {
@@ -89,6 +96,32 @@ public class XlsxGenerator implements CommandHandler {
 			try (FileOutputStream outputStream = new FileOutputStream(new File(documentDir, projectProperties.fileName + ".xlsx"))) {
 				workbook.write(outputStream);
 			}
+		}
+	}
+
+	/** Excel maximum column width, in characters. */
+	private static final int MAX_COLUMN_WIDTH = 255;
+
+	/**
+	 * Share table width between columns proportionally with the quantity of text in every column, but not less than
+	 * minimal column width. Uses the same algorithm as DOCX tables; cells text is wrapped by sheet visitor.
+	 */
+	static void autoFit(Sheet sheet, int columnsCount, ProjectProperties projectProperties) {
+		List<List<String>> texts = new ArrayList<>();
+		for (Row row : sheet) {
+			List<String> rowTexts = new ArrayList<>();
+			for (int column = 0; column < columnsCount; ++column) {
+				Cell cell = row.getCell(column);
+				rowTexts.add(cell != null ? cell.getStringCellValue() : "");
+			}
+			texts.add(rowTexts);
+		}
+
+		int[] widths = TableColumns.widths(texts, projectProperties.tableColumnMinWidth);
+		for (int column = 0; column < columnsCount; ++column) {
+			double characters = (double) projectProperties.tableWidth * widths[column] / TableColumns.FULL_WIDTH;
+			// column width unit is 1/256 of a character width
+			sheet.setColumnWidth(column, (int) Math.round(Math.min(characters, MAX_COLUMN_WIDTH) * 256));
 		}
 	}
 

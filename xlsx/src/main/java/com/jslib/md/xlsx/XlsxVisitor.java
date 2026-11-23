@@ -16,6 +16,7 @@ import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.RichTextString;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.commonmark.ext.gfm.tables.TableBlock;
 import org.commonmark.ext.gfm.tables.TableBody;
@@ -35,14 +36,22 @@ public class XlsxVisitor extends CustomVisitor {
 	private final CellStyle xlsxHeaderStyle;
 	private final CellStyle xlsxCellStyle;
 
+	/** Wrap all cells text since columns width is computed by table auto-fit. */
+	private final boolean wrapAll;
+
 	private Row xlsxRow;
 	private int xlsxRowIndex;
 	private int xlsxCellIndex;
 
 	public XlsxVisitor(Sheet sheet) {
+		this(sheet, false);
+	}
+
+	public XlsxVisitor(Sheet sheet, boolean tableAutoFit) {
 		super();
-		log.trace("XlsxVisitor(Sheet sheet)");
+		log.trace("XlsxVisitor(Sheet sheet, boolean tableAutoFit)");
 		this.sheet = sheet;
+		this.wrapAll = tableAutoFit;
 
 		this.xlsxHeaderStyle = sheet.getWorkbook().createCellStyle();
 		Font xlsxHeaderFont = sheet.getWorkbook().createFont();
@@ -119,7 +128,7 @@ public class XlsxVisitor extends CustomVisitor {
 		}
 
 		// line breaks are visible only if cell text is wrapped
-		boolean wrap = text.indexOf('\n') != -1;
+		boolean wrap = wrapAll || text.indexOf('\n') != -1;
 		// Excel cannot highlight part of a cell text so the whole cell is filled; header keeps its own fill for readability
 		boolean highlight = content.isHighlighted() && !header;
 		xlsxCell.setCellStyle(style(header ? xlsxHeaderStyle : xlsxCellStyle, wrap, highlight));
@@ -194,6 +203,8 @@ public class XlsxVisitor extends CustomVisitor {
 			style.cloneStyleFrom(base);
 			if (wrap) {
 				style.setWrapText(true);
+				// cells with multiple lines in the same row are aligned on their first line
+				style.setVerticalAlignment(VerticalAlignment.TOP);
 			}
 			if (highlight) {
 				style.setFillForegroundColor(IndexedColors.YELLOW.getIndex());

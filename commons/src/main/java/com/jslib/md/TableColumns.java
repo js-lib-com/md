@@ -1,4 +1,4 @@
-package com.jslib.md.docx;
+package com.jslib.md;
 
 import java.util.List;
 
@@ -10,9 +10,9 @@ import java.util.List;
  * Widths are expressed in fiftieths of a percent, the unit used by WordprocessingML for percent widths; widths sum is
  * always {@link #FULL_WIDTH}, that is, 100%.
  */
-final class TableColumns {
+public final class TableColumns {
 	/** Full width, 100%, in fiftieths of a percent. */
-	static final int FULL_WIDTH = 5000;
+	public static final int FULL_WIDTH = 5000;
 
 	private TableColumns() {
 	}
@@ -25,7 +25,7 @@ final class TableColumns {
 	 * @param minPercent minimal column width, in percent; if too large for columns count it is reduced to equal widths.
 	 * @return columns width in fiftieths of a percent.
 	 */
-	static int[] widths(List<List<String>> rows, int minPercent) {
+	public static int[] widths(List<List<String>> rows, int minPercent) {
 		int columnsCount = rows.stream().mapToInt(List::size).max().orElse(0);
 		double[] weights = new double[columnsCount];
 		for (int column = 0; column < columnsCount; ++column) {
@@ -39,7 +39,7 @@ final class TableColumns {
 		return widths(weights, minPercent);
 	}
 
-	static int[] widths(double[] weights, int minPercent) {
+	public static int[] widths(double[] weights, int minPercent) {
 		int count = weights.length;
 		if (count == 0) {
 			return new int[0];
