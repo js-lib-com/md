@@ -7,8 +7,11 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.codec.DecoderException;
@@ -16,6 +19,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.Borders;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -39,6 +43,7 @@ import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.Heading;
 import org.commonmark.node.HtmlBlock;
+import org.commonmark.node.HtmlInline;
 import org.commonmark.node.Image;
 import org.commonmark.node.IndentedCodeBlock;
 import org.commonmark.node.Link;
@@ -153,6 +158,7 @@ public class DocxVisitor extends CustomVisitor {
 	@Override
 	public void visit(Heading heading) {
 		log.trace("visit(Heading heading)");
+		startInlineContent();
 
 		if (heading.getLevel() == 1) {
 			if (topHeadingsCount++ > 0) {
@@ -206,6 +212,7 @@ public class DocxVisitor extends CustomVisitor {
 	@Override
 	public void visit(Paragraph paragraph) {
 		log.trace("visit(Paragraph paragraph)");
+		startInlineContent();
 		if (!ignoreParagraph) {
 			log.debug("Create paragraph");
 			currentParagraph = document.createParagraph();
@@ -373,11 +380,130 @@ public class DocxVisitor extends CustomVisitor {
 	}
 
 	private void applyEmphasis(XWPFRun run) {
-		if (italicDepth > 0) {
+		if (italicDepth > 0 || htmlFormats.isOpen(HtmlFormat.ITALIC)) {
 			run.setItalic(true);
 		}
-		if (boldDepth > 0) {
+		if (boldDepth > 0 || htmlFormats.isOpen(HtmlFormat.BOLD)) {
 			run.setBold(true);
+		}
+		if (htmlFormats.isOpen(HtmlFormat.UNDERLINE)) {
+			run.setUnderline(UnderlinePatterns.SINGLE);
+		}
+		if (htmlFormats.isOpen(HtmlFormat.STRIKE)) {
+			run.setStrikeThrough(true);
+		}
+		if (htmlFormats.isOpen(HtmlFormat.CODE)) {
+			run.setStyle(DocxStyles.getQuoteCharStyleId());
+		}
+		if (htmlFormats.isOpen(HtmlFormat.SUPERSCRIPT)) {
+			run.setVerticalAlignment("superscript");
+		} else if (htmlFormats.isOpen(HtmlFormat.SUBSCRIPT)) {
+			run.setVerticalAlignment("subscript");
+		}
+		if (htmlFormats.isOpen(HtmlFormat.HIGHLIGHT)) {
+			run.setTextHighlightColor("yellow");
+		}
+	}
+
+	// ------------------------------------------------------------------------
+	// inline HTML
+
+	enum HtmlFormat {
+		BOLD, ITALIC, UNDERLINE, STRIKE, CODE, SUPERSCRIPT, SUBSCRIPT, HIGHLIGHT
+	}
+
+	private static final Map<String, HtmlFormat> HTML_FORMAT_TAGS = Map.ofEntries( //
+			Map.entry("b", HtmlFormat.BOLD), Map.entry("strong", HtmlFormat.BOLD), //
+			Map.entry("i", HtmlFormat.ITALIC), Map.entry("em", HtmlFormat.ITALIC), Map.entry("cite", HtmlFormat.ITALIC), Map.entry("var", HtmlFormat.ITALIC), //
+			Map.entry("u", HtmlFormat.UNDERLINE), Map.entry("ins", HtmlFormat.UNDERLINE), //
+			Map.entry("s", HtmlFormat.STRIKE), Map.entry("del", HtmlFormat.STRIKE), Map.entry("strike", HtmlFormat.STRIKE), //
+			Map.entry("code", HtmlFormat.CODE), Map.entry("kbd", HtmlFormat.CODE), Map.entry("samp", HtmlFormat.CODE), Map.entry("tt", HtmlFormat.CODE), //
+			Map.entry("sup", HtmlFormat.SUPERSCRIPT), Map.entry("sub", HtmlFormat.SUBSCRIPT), //
+			Map.entry("mark", HtmlFormat.HIGHLIGHT));
+
+	private static final Pattern HTML_INLINE_TAG = Pattern.compile("^<\\s*(/?)\\s*([a-zA-Z][a-zA-Z0-9]*)\\b([^>]*)>$", Pattern.DOTALL);
+	private static final Pattern HTML_HREF = Pattern.compile("\\bhref\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", Pattern.CASE_INSENSITIVE);
+
+	/** Open inline HTML formats with nesting depth. Unbalanced tags are tolerated and state is reset on every block. */
+	private static class HtmlFormats {
+		private final int[] depths = new int[HtmlFormat.values().length];
+
+		boolean isOpen(HtmlFormat format) {
+			return depths[format.ordinal()] > 0;
+		}
+
+		void open(HtmlFormat format) {
+			++depths[format.ordinal()];
+		}
+
+		void close(HtmlFormat format) {
+			if (depths[format.ordinal()] > 0) {
+				--depths[format.ordinal()];
+			}
+		}
+
+		void reset() {
+			Arrays.fill(depths, 0);
+		}
+	}
+
+	private final HtmlFormats htmlFormats = new HtmlFormats();
+
+	/** Reset inline state at the start of a block with inline content so that unbalanced inline HTML does not leak. */
+	private void startInlineContent() {
+		htmlFormats.reset();
+		currentRun = null;
+	}
+
+	/**
+	 * Inline HTML tags are mapped to run formatting: bold, italic, underline, strike through, code, superscript,
+	 * subscript and highlight. Also supported are line break and anchor with href, rendered as hyperlink. Comments and
+	 * other tags are ignored, while text between tags is rendered as usual.
+	 */
+	@Override
+	public void visit(HtmlInline htmlInline) {
+		log.trace("visit(HtmlInline htmlInline)");
+		String literal = htmlInline.getLiteral();
+		Matcher matcher = HTML_INLINE_TAG.matcher(literal);
+		if (!matcher.matches()) {
+			log.debug("Ignore inline HTML: {}", literal);
+			return;
+		}
+
+		boolean closing = !matcher.group(1).isEmpty();
+		String tag = matcher.group(2).toLowerCase();
+		String attributes = matcher.group(3);
+
+		HtmlFormat format = HTML_FORMAT_TAGS.get(tag);
+		if (format != null) {
+			if (closing) {
+				htmlFormats.close(format);
+			} else if (!attributes.strip().endsWith("/")) {
+				htmlFormats.open(format);
+			}
+			return;
+		}
+
+		switch (tag) {
+		case "br":
+			createInlineRun().addBreak();
+			break;
+
+		case "a":
+			if (closing) {
+				// anchor without text does not leave pending hyperlink run for following text
+				currentRun = null;
+				break;
+			}
+			Matcher href = HTML_HREF.matcher(attributes);
+			if (href.find()) {
+				String destination = href.group(1) != null ? href.group(1) : href.group(2) != null ? href.group(2) : href.group(3);
+				startHyperlink(destination.replace("&amp;", "&"));
+			}
+			break;
+
+		default:
+			log.debug("Ignore unsupported inline HTML tag: {}", literal);
 		}
 	}
 
@@ -422,13 +548,18 @@ public class DocxVisitor extends CustomVisitor {
 	@Override
 	public void visit(Link link) {
 		log.trace("visit(Link link)");
+		startHyperlink(link.getDestination());
+		// w:t
+		super.visit(link);
+	}
 
-		log.debug("Create hyperlink run to: {}", link.getDestination());
+	/** Create hyperlink run, used by next text node, styled as hyperlink if links are enabled by project properties. */
+	private void startHyperlink(String destination) {
+		log.debug("Create hyperlink run to: {}", destination);
 		assert currentParagraph != null;
-		currentRun = currentParagraph.createHyperlinkRun(link.getDestination());
+		currentRun = currentParagraph.createHyperlinkRun(destination);
 
 		if (!projectProperties.linkEnabled) {
-			super.visit(link);
 			return;
 		}
 
@@ -461,9 +592,6 @@ public class DocxVisitor extends CustomVisitor {
 
 		// crazy: without next statement above w:rStyle is not written in document xml w:color
 		ctrPr.addNewColor().setVal("0000FF");
-
-		// w:t
-		super.visit(link);
 	}
 
 	// ------------------------------------------------------------------------
@@ -765,6 +893,7 @@ public class DocxVisitor extends CustomVisitor {
 	@Override
 	public void visit(TableCell mdCell) {
 		log.trace("visit(TableCell mdCell)");
+		startInlineContent();
 
 		XWPFTableCell docxCell = null;
 		assert currentTableRow != null;
