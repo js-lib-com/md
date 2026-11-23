@@ -1,6 +1,7 @@
 package com.jslib.md;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.util.Arrays;
@@ -46,14 +47,58 @@ public class TableColumnsTest {
 		List<List<String>> rows = Arrays.asList(Arrays.asList("Name", "Description"), Arrays.asList(" a ", "long long long text"));
 
 		// when
-		int[] widths = TableColumns.widths(rows, 10);
+		int[] widths = TableColumns.widths(rows, 10, 0);
 
 		// then
 		assertThat(widths, equalTo(new int[] { 714, 4286 }));
 	}
 
 	@Test
+	public void GivenOutlierCell_WhenTrimmedMean_ThenIgnoreShortestAndLongest() {
+		// 20% of 5 cells: one cell dropped from each end
+		assertThat(TableColumns.trimmedMean(new int[] { 240, 8, 12, 9, 10 }, 20), closeTo(31.0 / 3, 1e-9));
+	}
+
+	@Test
+	public void GivenTrimPercentTooSmallForCellsCount_WhenTrimmedMean_ThenUseAllCells() {
+		// 10% of 5 cells, rounded down, drops nothing
+		assertThat(TableColumns.trimmedMean(new int[] { 240, 8, 12, 9, 10 }, 10), closeTo(55.8, 1e-9));
+		// 20% of 4 cells, rounded down, drops nothing
+		assertThat(TableColumns.trimmedMean(new int[] { 1, 2, 3, 100 }, 20), closeTo(26.5, 1e-9));
+	}
+
+	@Test
+	public void GivenZeroOutliersPercent_WhenTrimmedMean_ThenPlainMean() {
+		assertThat(TableColumns.trimmedMean(new int[] { 240, 8, 12, 9, 10, 0, 0, 0, 0, 0 }, 0), closeTo(27.9, 1e-9));
+	}
+
+	@Test
+	public void GivenMaximumOutliersPercent_WhenTrimmedMean_ThenMedian() {
+		assertThat(TableColumns.trimmedMean(new int[] { 240, 8, 12, 9, 10 }, 50), closeTo(10, 1e-9));
+		assertThat(TableColumns.trimmedMean(new int[] { 1, 2, 3, 100 }, 50), closeTo(2.5, 1e-9));
+	}
+
+	@Test
+	public void GivenColumnWithOneLongCell_WhenWidths_ThenOutlierDoesNotWidenColumn() {
+		// given: header and 4 rows; second column has a single long note
+		List<List<String>> rows = Arrays.asList( //
+				Arrays.asList("Description of the step", "Note"), //
+				Arrays.asList("Open login form from menu", "optional"), //
+				Arrays.asList("Enter user name and password", "required"), //
+				Arrays.asList("Press the login button now", "-"), //
+				Arrays.asList("Wait for the main window", "x".repeat(240)));
+
+		// when
+		int[] plain = TableColumns.widths(rows, 10, 0);
+		int[] trimmed = TableColumns.widths(rows, 10, 20);
+
+		// then: mean of note lengths is 52.2, more than description; trimmed mean is 6.7
+		assertThat(plain[1] > plain[0], equalTo(true));
+		assertThat(trimmed[1] < trimmed[0], equalTo(true));
+	}
+
+	@Test
 	public void GivenEmptyColumns_WhenWidths_ThenEqualWidths() {
-		assertThat(TableColumns.widths(Arrays.asList(Arrays.asList("", "")), 10), equalTo(new int[] { 2500, 2500 }));
+		assertThat(TableColumns.widths(Arrays.asList(Arrays.asList("", "")), 10, 20), equalTo(new int[] { 2500, 2500 }));
 	}
 }

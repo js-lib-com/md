@@ -1,11 +1,14 @@
 package com.jslib.md;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
- * Table columns width computed from the quantity of text in every column. Column weight is the average text length of
- * its cells, header included, and column width is proportional to its weight, but not less than a minimal threshold.
- * Columns raised to the threshold take their space from the other columns, proportionally with their weights.
+ * Table columns width computed from the quantity of text in every column. Column weight is the trimmed mean of its
+ * cells text length, header included: cell lengths are sorted and a percent of cells is dropped from each end before
+ * averaging, so that a few very long or very short cells do not distort the column width. Column width is proportional
+ * to its weight, but not less than a minimal threshold. Columns raised to the threshold take their space from the other
+ * columns, proportionally with their weights.
  * <p>
  * Widths are expressed in fiftieths of a percent, the unit used by WordprocessingML for percent widths; widths sum is
  * always {@link #FULL_WIDTH}, that is, 100%.
@@ -22,21 +25,44 @@ public final class TableColumns {
 	 * cells; missing cells are considered empty.
 	 *
 	 * @param rows table cell texts, header row included,
-	 * @param minPercent minimal column width, in percent; if too large for columns count it is reduced to equal widths.
+	 * @param minPercent minimal column width, in percent; if too large for columns count it is reduced to equal widths,
+	 * @param outliersPercent percent of cells dropped from each end of sorted cell lengths, 0 to use all cells.
 	 * @return columns width in fiftieths of a percent.
 	 */
-	public static int[] widths(List<List<String>> rows, int minPercent) {
+	public static int[] widths(List<List<String>> rows, int minPercent, int outliersPercent) {
 		int columnsCount = rows.stream().mapToInt(List::size).max().orElse(0);
 		double[] weights = new double[columnsCount];
 		for (int column = 0; column < columnsCount; ++column) {
-			int length = 0;
-			for (List<String> row : rows) {
-				length += column < row.size() ? row.get(column).strip().length() : 0;
+			int[] lengths = new int[rows.size()];
+			for (int row = 0; row < rows.size(); ++row) {
+				List<String> cells = rows.get(row);
+				lengths[row] = column < cells.size() ? cells.get(column).strip().length() : 0;
 			}
 			// empty columns still need some space
-			weights[column] = Math.max((double) length / rows.size(), 1);
+			weights[column] = Math.max(trimmedMean(lengths, outliersPercent), 1);
 		}
 		return widths(weights, minPercent);
+	}
+
+	/**
+	 * Mean of values after dropping given percent of values, rounded down, from each end of sorted values. At least one
+	 * value is kept, that is, the median when too many values would be dropped.
+	 */
+	static double trimmedMean(int[] values, int outliersPercent) {
+		if (values.length == 0) {
+			return 0;
+		}
+		int[] sorted = values.clone();
+		Arrays.sort(sorted);
+		int dropped = sorted.length * Math.max(outliersPercent, 0) / 100;
+		if (2 * dropped >= sorted.length) {
+			dropped = (sorted.length - 1) / 2;
+		}
+		double sum = 0;
+		for (int i = dropped; i < sorted.length - dropped; ++i) {
+			sum += sorted[i];
+		}
+		return sum / (sorted.length - 2 * dropped);
 	}
 
 	public static int[] widths(double[] weights, int minPercent) {

@@ -16,6 +16,8 @@ public class ProjectProperties {
 	public final boolean tableAutoFit;
 	/** Minimal table column width, in percent, used when table auto-fit is enabled. */
 	public final int tableColumnMinWidth;
+	/** Percent of cells, from each end of sorted cell lengths, ignored when computing table column width. */
+	public final int tableColumnOutliers;
 
 	public ProjectProperties(Properties properties) {
 		this.sourceDir = property(properties, "source.dir", (String) null);
@@ -25,6 +27,7 @@ public class ProjectProperties {
 		this.linkEnabled = property(properties, "link.enabled", false);
 		this.tableAutoFit = property(properties, "table.auto.fit", false);
 		this.tableColumnMinWidth = property(properties, "table.column.min.width", 10, 0, 100);
+		this.tableColumnOutliers = property(properties, "table.column.outliers", 20, 0, 50);
 	}
 
 	private static String property(Properties properties, String propertyName, String defaultValue) {

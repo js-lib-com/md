@@ -117,7 +117,7 @@ public class XlsxGenerator implements CommandHandler {
 			texts.add(rowTexts);
 		}
 
-		int[] widths = TableColumns.widths(texts, projectProperties.tableColumnMinWidth);
+		int[] widths = TableColumns.widths(texts, projectProperties.tableColumnMinWidth, projectProperties.tableColumnOutliers);
 		for (int column = 0; column < columnsCount; ++column) {
 			double characters = (double) projectProperties.tableWidth * widths[column] / TableColumns.FULL_WIDTH;
 			// column width unit is 1/256 of a character width

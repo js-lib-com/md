@@ -817,7 +817,7 @@ public class DocxVisitor extends CustomVisitor {
 			}
 			texts.add(rowTexts);
 		}
-		int[] widths = TableColumns.widths(texts, projectProperties.tableColumnMinWidth);
+		int[] widths = TableColumns.widths(texts, projectProperties.tableColumnMinWidth, projectProperties.tableColumnOutliers);
 		log.debug("Set table columns width, in fiftieths of percent: {}", Arrays.toString(widths));
 
 		CTTblPr tblPr = table.getCTTbl().getTblPr();

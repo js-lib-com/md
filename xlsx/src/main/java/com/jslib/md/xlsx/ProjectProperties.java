@@ -13,6 +13,8 @@ public class ProjectProperties {
 	public final boolean tableAutoFit;
 	/** Minimal table column width, in percent, used when table auto-fit is enabled. */
 	public final int tableColumnMinWidth;
+	/** Percent of cells, from each end of sorted cell lengths, ignored when computing table column width. */
+	public final int tableColumnOutliers;
 	/** Total table width, in characters, shared by columns when table auto-fit is enabled. */
 	public final int tableWidth;
 
@@ -21,6 +23,7 @@ public class ProjectProperties {
 		this.fileName = property(properties, "file.name", "document");
 		this.tableAutoFit = Boolean.parseBoolean(property(properties, "table.auto.fit", "false"));
 		this.tableColumnMinWidth = property(properties, "table.column.min.width", 10, 0, 100);
+		this.tableColumnOutliers = property(properties, "table.column.outliers", 20, 0, 50);
 		this.tableWidth = property(properties, "xlsx.table.width", 100, 10, 2000);
 	}
 

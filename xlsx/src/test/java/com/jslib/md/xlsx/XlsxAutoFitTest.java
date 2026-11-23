@@ -71,6 +71,24 @@ public class XlsxAutoFitTest {
 	}
 
 	@Test
+	public void GivenAutoFitWithOutlierCell_WhenExecute_ThenIgnoreItByDefault() throws Exception {
+		// given: note column lengths 4, 8, 8, 1, 240; step column lengths 9, 10, 10, 10, 10
+		String table = "|Step text|Note|\n|-|-|\n|aaaaaaaaaa|optional|\n|bbbbbbbbbb|required|\n|cccccccccc|-|\n|dddddddddd|" + "x".repeat(240) + "|\n";
+
+		// when
+		Sheet trimmed = generate("table.auto.fit=true\n", table);
+		int[] trimmedWidths = { trimmed.getColumnWidth(0), trimmed.getColumnWidth(1) };
+		workbook.close();
+		Sheet plain = generate("table.auto.fit=true\ntable.column.outliers=0\n", table);
+
+		// then: trimmed means 10 and 6.67, that is, 60 and 40 characters; plain means 9.8 and 52.2, that is, 15.8 and 84.2
+		assertThat(trimmedWidths[0], equalTo(60 * 256));
+		assertThat(trimmedWidths[1], equalTo(40 * 256));
+		assertThat(plain.getColumnWidth(0), equalTo(4045));
+		assertThat(plain.getColumnWidth(1), equalTo(21555));
+	}
+
+	@Test
 	public void GivenAutoFit_WhenExecute_ThenWrapAllCellsAlignedTop() throws Exception {
 		// when
 		Sheet sheet = generate("table.auto.fit=true\n", TABLE);

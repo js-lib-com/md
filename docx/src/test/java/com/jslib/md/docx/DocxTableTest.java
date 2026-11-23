@@ -77,6 +77,40 @@ public class DocxTableTest {
 		assertThat(cellWidths(table.getRow(1)), contains("pct:1250", "pct:3750"));
 	}
 
+	// step column lengths 9, 10, 10, 10, 10: trimmed mean 10, plain mean 9.8; note column lengths 4, 8, 8, 1, 240: trimmed mean 6.67, plain mean 52.2
+	private static final String TABLE_WITH_OUTLIER = "|Step text|Note|\n|-|-|\n|aaaaaaaaaa|optional|\n|bbbbbbbbbb|required|\n|cccccccccc|-|\n|dddddddddd|" + "x".repeat(240) + "|\n";
+
+	@Test
+	public void GivenAutoFitWithDefaultOutliers_WhenVisitTable_ThenIgnoreOutlierCell() throws Exception {
+		// given
+		properties.setProperty("table.auto.fit", "true");
+
+		// when
+		XWPFTable table = table(TABLE_WITH_OUTLIER);
+
+		// then: weights 10 and 6.67, that is, 60% and 40%
+		assertThat(cellWidths(table.getRow(1)), contains("pct:3000", "pct:2000"));
+	}
+
+	@Test
+	public void GivenAutoFitWithZeroOutliers_WhenVisitTable_ThenUseAllCells() throws Exception {
+		// given
+		properties.setProperty("table.auto.fit", "true");
+		properties.setProperty("table.column.outliers", "0");
+
+		// when
+		XWPFTable table = table(TABLE_WITH_OUTLIER);
+
+		// then: weights 9.8 and 52.2, that is, 15.81% and 84.19%
+		assertThat(cellWidths(table.getRow(1)), contains("pct:790", "pct:4210"));
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void GivenInvalidOutliersPercent_WhenCreateProjectProperties_ThenThrow() {
+		properties.setProperty("table.column.outliers", "60");
+		new ProjectProperties(properties);
+	}
+
 	@Test
 	public void GivenAutoFitDisabled_WhenVisitTable_ThenKeepNoWrapColumns() throws Exception {
 		// when
