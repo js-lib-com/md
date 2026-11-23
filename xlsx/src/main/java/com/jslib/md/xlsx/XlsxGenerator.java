@@ -3,9 +3,9 @@ package com.jslib.md.xlsx;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -44,7 +44,7 @@ public class XlsxGenerator implements CommandHandler {
 		Properties properties = new Properties();
 		if (projectPropertiesFile.exists()) {
 			// project properties is optional in which case defaults apply
-			try (Reader reader = new FileReader(projectPropertiesFile)) {
+			try (Reader reader = new InputStreamReader(new FileInputStream(projectPropertiesFile), StandardCharsets.UTF_8)) {
 				properties.load(reader);
 			}
 		}
@@ -57,7 +57,7 @@ public class XlsxGenerator implements CommandHandler {
 			for (File markdownFile : markdownFiles) {
 				Sheet sheet = workbook.createSheet(markdownFile.getName().substring(0, markdownFile.getName().length() - 3));
 				log.debug("Process markdown file {}", markdownFile);
-				try (InputStreamReader reader = new InputStreamReader(new FileInputStream(markdownFile), "UTF-8")) {
+				try (InputStreamReader reader = new InputStreamReader(new FileInputStream(markdownFile), StandardCharsets.UTF_8)) {
 					XlsxVisitor visitor = new XlsxVisitor(sheet);
 					parser.parseReader(reader).accept(visitor);
 				}

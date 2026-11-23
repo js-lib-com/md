@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -41,7 +40,7 @@ public class DocxGenerator implements CommandHandler {
 		Properties properties = new Properties();
 		if (projectPropertiesFile.exists()) {
 			// project properties is optional in which case defaults apply
-			try (Reader reader = new FileReader(projectPropertiesFile)) {
+			try (Reader reader = reader(projectPropertiesFile)) {
 				properties.load(reader);
 			}
 		}
@@ -116,7 +115,7 @@ public class DocxGenerator implements CommandHandler {
 		}
 
 		Properties documentProperties = new Properties();
-		try (Reader reader = new FileReader(documentPropertiesFile)) {
+		try (Reader reader = reader(documentPropertiesFile)) {
 			documentProperties.load(reader);
 		}
 
@@ -127,7 +126,7 @@ public class DocxGenerator implements CommandHandler {
 		DocxVisitor documentVisitor = new DocxVisitor(template, projectProperties, documentDir);
 
 		DocxRevisions revisions = new DocxRevisions(documentVisitor.getDocument());
-		try (FileReader reader = new FileReader(revisionsFile)) {
+		try (Reader reader = reader(revisionsFile)) {
 			parser.parseReader(reader).accept(revisions);
 		}
 
