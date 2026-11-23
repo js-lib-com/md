@@ -5,14 +5,25 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -23,12 +34,26 @@ import com.google.gson.JsonParseException;
 import com.jslib.md.CommandHandler;
 
 /**
- * Translate document sources from English to Romanian using OpenAI chat completions API. API key is read from
- * <code>OPENAI_API_KEY</code> environment variable, with <code>OPENAI_KEY</code> environment variable and system property
- * as fallback. Model can be changed with <code>OPENAI_MODEL</code> environment variable or system property.
+ * Translate document sources from English to Romanian using an OpenAI compatible chat completions API, by default the
+ * local llama.cpp server at {@value #DEFAULT_BASE_URL}. Settings are read from environment variables, with system
+ * properties of the same name as fallback:
+ * <ul>
+ * <li><code>OPENAI_BASE_URL</code> - API base URL, e.g. <code>https://api.openai.com/v1</code>,
+ * <li><code>OPENAI_API_KEY</code> - API key, with <code>OPENAI_KEY</code> as fallback; optional, since local server does
+ * not require it,
+ * <li><code>OPENAI_MODEL</code> - model name; if missing, server uses its loaded model,
+ * <li><code>TRANSLATE_PARALLEL</code> - number of chunks translated concurrently; default {@value #DEFAULT_PARALLEL},
+ * matching local server slots.
+ * </ul>
  */
 public class Translator implements CommandHandler {
 	private static final Logger log = LoggerFactory.getLogger(Translator.class);
+
+	/** Local llama.cpp server. */
+	static final String DEFAULT_BASE_URL = "http://jarvis.local/v1";
+
+	/** Local llama.cpp server processes this many requests in parallel; more requests are queued by server. */
+	static final int DEFAULT_PARALLEL = 4;
 
 	private static final String[] FILES = { "document.md", "revisions.md", "document.properties" };
 
@@ -39,7 +64,8 @@ public class Translator implements CommandHandler {
 	 */
 	@Override
 	public void execute(File documentDir) throws Exception {
-		Translator translator = client != null ? this : new Translator(new OpenAiClient(HttpClient.newHttpClient(), apiKey(), model()));
+		Translator translator = client != null ? this : new Translator(new OpenAiClient(HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build(), baseUrl(), apiKey(), model()), parallel());
+		log.debug("Translate using {} with {} parallel requests", baseUrl(), translator.parallel);
 
 		int translated = 0;
 		int failed = 0;
@@ -80,17 +106,39 @@ public class Translator implements CommandHandler {
 		return file.resolveSibling(localizedName);
 	}
 
-	static String apiKey() {
-		String apiKey = firstNonEmpty(System.getenv("OPENAI_API_KEY"), System.getenv("OPENAI_KEY"), System.getProperty("OPENAI_KEY"));
-		if (apiKey == null) {
-			throw new IllegalStateException("Missing OpenAI API key. Please set OPENAI_API_KEY environment variable.");
-		}
-		return apiKey;
+	static String baseUrl() {
+		String baseUrl = setting("OPENAI_BASE_URL");
+		return baseUrl != null ? baseUrl : DEFAULT_BASE_URL;
 	}
 
+	/** Optional API key, null if not configured. */
+	static String apiKey() {
+		return firstNonEmpty(setting("OPENAI_API_KEY"), setting("OPENAI_KEY"));
+	}
+
+	/** Optional model, null if not configured. */
 	static String model() {
-		String model = firstNonEmpty(System.getenv("OPENAI_MODEL"), System.getProperty("OPENAI_MODEL"));
-		return model != null ? model : OpenAiClient.DEFAULT_MODEL;
+		return setting("OPENAI_MODEL");
+	}
+
+	static int parallel() {
+		String parallel = setting("TRANSLATE_PARALLEL");
+		if (parallel == null) {
+			return DEFAULT_PARALLEL;
+		}
+		try {
+			int value = Integer.parseInt(parallel.strip());
+			if (value > 0) {
+				return value;
+			}
+		} catch (NumberFormatException e) {
+			// fall through to invalid value error
+		}
+		throw new IllegalArgumentException("Invalid TRANSLATE_PARALLEL value: " + parallel + ". Please use a positive integer.");
+	}
+
+	private static String setting(String name) {
+		return firstNonEmpty(System.getenv(name), System.getProperty(name));
 	}
 
 	private static String firstNonEmpty(String... values) {
@@ -107,38 +155,175 @@ public class Translator implements CommandHandler {
 	/** Chunk length, in characters, that keeps translation under completion tokens limit; deduced empirically. */
 	static final int CHUNK_LENGTH = 3000;
 
-	/** Blank lines, possibly with white spaces, between paragraphs, whatever line separator. */
-	private static final Pattern PARAGRAPHS_SEPARATOR = Pattern.compile("\\R(?:[ \\t]*\\R)+");
+	/**
+	 * Blank lines, possibly with white spaces, between paragraphs, whatever line separator. Line breaks are atomic since
+	 * otherwise backtracking matches CRLF as two line breaks, that is, as a blank line.
+	 */
+	private static final Pattern PARAGRAPHS_SEPARATOR = Pattern.compile("(?>\\R)(?:[ \\t]*(?>\\R))+");
 
 	@FunctionalInterface
 	interface Client {
 		String complete(String prompt) throws IOException, InterruptedException;
 	}
 
+	/** Client is used concurrently and must be thread safe. */
 	private final Client client;
+	private final int parallel;
 
 	public Translator() {
-		this(null);
+		this(null, DEFAULT_PARALLEL);
 	}
 
-	Translator(Client client) {
+	Translator(Client client, int parallel) {
 		this.client = client;
+		this.parallel = parallel;
 	}
 
 	/**
-	 * Translate text split into chunks of paragraphs. Translated chunks are joined with a blank line, using source text
-	 * line separator, and the result ends with a line separator.
+	 * Translate text split into chunks of paragraphs, up to configured number of chunks concurrently. Translated chunks
+	 * are joined in source order with a blank line, using source text line separator, and the result ends with a line
+	 * separator. On first chunk failure pending chunks are cancelled and the failure is rethrown.
 	 */
 	String translate(String text, String format, String sourceLanguage, String targetLanguage) throws IOException, InterruptedException {
 		String lineSeparator = text.contains("\r\n") ? "\r\n" : "\n";
 		String paragraphsSeparator = lineSeparator + lineSeparator;
 
-		List<String> translations = new ArrayList<>();
-		for (String chunk : chunks(text, paragraphsSeparator, CHUNK_LENGTH)) {
-			String prompt = String.format("Translate the following %s %s text to %s while preserving original formatting characters:\n\n%s", sourceLanguage, format, targetLanguage, chunk);
-			translations.add(client.complete(prompt).strip());
+		List<String> chunks = chunks(text, paragraphsSeparator, CHUNK_LENGTH);
+		ExecutorService executor = Executors.newFixedThreadPool(Math.max(1, Math.min(parallel, chunks.size())), daemonThreads());
+		try {
+			CompletionService<String> completion = new ExecutorCompletionService<>(executor);
+			List<Future<String>> futures = new ArrayList<>();
+			for (int i = 0; i < chunks.size(); ++i) {
+				String chunk = chunks.get(i);
+				String prompt = String.format("Translate this %s %s text to %s:\n\n%s", sourceLanguage, format, targetLanguage, chunk);
+				int index = i + 1;
+				futures.add(completion.submit(() -> translateChunk(index, chunk, prompt, lineSeparator)));
+			}
+
+			// wait in completion order to fail fast on first failed chunk
+			for (int i = 0; i < futures.size(); ++i) {
+				try {
+					completion.take().get();
+				} catch (ExecutionException e) {
+					throw rethrow(e.getCause());
+				}
+				log.debug("Translated {} of {} chunks", i + 1, futures.size());
+			}
+
+			List<String> translations = new ArrayList<>();
+			for (Future<String> future : futures) {
+				translations.add(future.get());
+			}
+			return String.join(paragraphsSeparator, translations) + lineSeparator;
+		} catch (ExecutionException e) {
+			// not reachable since all futures are already completed successfully
+			throw new IllegalStateException(e);
+		} finally {
+			// cancel pending chunks on failure
+			executor.shutdownNow();
 		}
-		return String.join(paragraphsSeparator, translations) + lineSeparator;
+	}
+
+	/** Attempts to get a translation with the same markdown structure as the source chunk. */
+	static final int STRUCTURE_ATTEMPTS = 3;
+
+	/**
+	 * Translate chunk, repair known model artifacts and use source line separator. Local models occasionally damage
+	 * markdown structure, e.g. drop a table row or prefix a line with garbage; translation is retried if structure differs
+	 * from source and, if still different after all attempts, the last translation is used with a warning.
+	 */
+	private String translateChunk(int index, String chunk, String prompt, String lineSeparator) throws IOException, InterruptedException {
+		String translation = null;
+		for (int attempt = 1; attempt <= STRUCTURE_ATTEMPTS; ++attempt) {
+			translation = repair(chunk, client.complete(prompt).strip());
+			String difference = structureDifference(chunk, translation);
+			if (difference == null) {
+				break;
+			}
+			if (attempt < STRUCTURE_ATTEMPTS) {
+				log.debug("Chunk {} translation differs from source: {}; retry {} of {}.", index, difference, attempt, STRUCTURE_ATTEMPTS - 1);
+			} else {
+				log.warn("Chunk {} translation differs from source: {}. Please review translation starting with: {}", index, difference, firstLine(translation));
+			}
+		}
+		return LINE_SEPARATOR.matcher(translation).replaceAll(lineSeparator);
+	}
+
+	private static final Pattern LINE_SEPARATOR = Pattern.compile("\\R");
+
+	/**
+	 * Garbage model emits sometimes at line start, before a markdown marker: backslashes or a slash, e.g.
+	 * <code>\\| cell |</code> or <code>/ - item</code>.
+	 */
+	private static final Pattern LINE_PREFIX_ARTIFACT = Pattern.compile("(?m)^([ \\t]*)(?:\\\\+ ?|/ )(?=[|#*-]|\\d+\\. )");
+
+	/** Lines starting with backslash or slash in source, in which case line prefix artifacts are not repaired. */
+	private static final Pattern SOURCE_LINE_PREFIX = Pattern.compile("(?m)^[ \\t]*[\\\\/]");
+
+	/** Line with only backslashes or a slash, model emits sometimes between list items or table rows. */
+	private static final Pattern LINE_ARTIFACT = Pattern.compile("(?m)^[ \\t]*(?:\\\\+|/)[ \\t]*(?:\\R|$)");
+
+	static String repair(String source, String translation) {
+		if (SOURCE_LINE_PREFIX.matcher(source).find()) {
+			return translation;
+		}
+		String repaired = LINE_ARTIFACT.matcher(translation).replaceAll("");
+		return LINE_PREFIX_ARTIFACT.matcher(repaired).replaceAll("$1");
+	}
+
+	/** Translation keeps source lines, so a different count means inserted garbage or merged lines. */
+	private static final Pattern NON_BLANK_LINE = Pattern.compile("(?m)^[ \\t]*\\S");
+	private static final Pattern HEADING = Pattern.compile("(?m)^#+ ");
+	private static final Pattern TABLE_ROW = Pattern.compile("(?m)^[ \\t]*\\|");
+	private static final Pattern LIST_ITEM = Pattern.compile("(?m)^[ \\t]*(?:[-*+]|\\d+\\.) ");
+
+	/** Describe markdown structure difference between source and translation, or null if same structure. */
+	static String structureDifference(String source, String translation) {
+		List<String> differences = new ArrayList<>();
+		compare(differences, "lines", NON_BLANK_LINE, source, translation);
+		compare(differences, "headings", HEADING, source, translation);
+		compare(differences, "table rows", TABLE_ROW, source, translation);
+		compare(differences, "list items", LIST_ITEM, source, translation);
+		return differences.isEmpty() ? null : String.join(", ", differences);
+	}
+
+	private static void compare(List<String> differences, String name, Pattern pattern, String source, String translation) {
+		long sourceCount = pattern.matcher(source).results().count();
+		long translationCount = pattern.matcher(translation).results().count();
+		if (sourceCount != translationCount) {
+			differences.add(String.format("%d %s instead of %d", translationCount, name, sourceCount));
+		}
+	}
+
+	private static String firstLine(String text) {
+		String line = text.lines().findFirst().orElse("");
+		return line.length() > 80 ? line.substring(0, 80) + "..." : line;
+	}
+
+	private static IOException rethrow(Throwable cause) throws InterruptedException {
+		if (cause instanceof IOException) {
+			return (IOException) cause;
+		}
+		if (cause instanceof InterruptedException) {
+			throw (InterruptedException) cause;
+		}
+		if (cause instanceof RuntimeException) {
+			throw (RuntimeException) cause;
+		}
+		if (cause instanceof java.lang.Error) {
+			throw (java.lang.Error) cause;
+		}
+		return new IOException(cause);
+	}
+
+	/** Daemon threads do not keep JVM alive if a cancelled request ignores interruption. */
+	private static ThreadFactory daemonThreads() {
+		AtomicInteger index = new AtomicInteger();
+		return runnable -> {
+			Thread thread = new Thread(runnable, "translate-" + index.incrementAndGet());
+			thread.setDaemon(true);
+			return thread;
+		};
 	}
 
 	/** Group paragraphs into chunks of at least given length, except the last one. Paragraphs are never split. */
@@ -166,60 +351,93 @@ public class Translator implements CommandHandler {
 
 	// --------------------------------------------------------------------------------------------
 
+	private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+
+	/** Generous since a local server may be slow or busy serving other requests. */
+	private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(10);
+
 	static class OpenAiClient implements Client {
-		static final String DEFAULT_MODEL = "gpt-4o-mini";
-		private static final URI OPENAI_URI = URI.create("https://api.openai.com/v1/chat/completions");
+		private static final String OPENAI_HOST = "api.openai.com";
+		private static final int MAX_ATTEMPTS = 3;
 
 		private final HttpClient httpClient;
+		private final URI uri;
 		private final String apiKey;
 		private final String model;
+		/** Add llama.cpp specific request fields on servers other than OpenAI, which rejects unknown fields. */
+		private final boolean llamaCpp;
 		private final Gson json;
 
-		OpenAiClient(HttpClient httpClient, String apiKey, String model) {
+		/** API key and model are optional; model is omitted from request if null. */
+		OpenAiClient(HttpClient httpClient, String baseUrl, String apiKey, String model) {
 			this.httpClient = httpClient;
+			this.uri = completionsUri(baseUrl);
 			this.apiKey = apiKey;
 			this.model = model;
+			this.llamaCpp = !OPENAI_HOST.equalsIgnoreCase(uri.getHost());
 			this.json = new Gson();
 		}
 
+		/** Retry on server errors since local model output occasionally fails server side parsing. */
 		@Override
 		public String complete(String prompt) throws IOException, InterruptedException {
-			HttpRequest request = HttpRequest.newBuilder() //
-					.uri(OPENAI_URI) //
+			HttpRequest.Builder request = HttpRequest.newBuilder() //
+					.uri(uri) //
+					.timeout(REQUEST_TIMEOUT) //
 					.header("Content-Type", "application/json") //
-					.header("Authorization", "Bearer " + apiKey) //
-					.POST(HttpRequest.BodyPublishers.ofString(requestBody(json, model, prompt), UTF_8)) //
-					.build();
+					.POST(HttpRequest.BodyPublishers.ofString(requestBody(json, model, llamaCpp, prompt), UTF_8));
+			if (apiKey != null) {
+				request.header("Authorization", "Bearer " + apiKey);
+			}
 
-			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(UTF_8));
-			return content(json, response.statusCode(), response.body());
+			for (int attempt = 1;; ++attempt) {
+				HttpResponse<String> response;
+				try {
+					response = httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString(UTF_8));
+				} catch (ConnectException e) {
+					throw new IOException("Translation service not reachable at " + uri, e);
+				} catch (HttpTimeoutException e) {
+					throw new IOException("Translation service timeout at " + uri, e);
+				}
+				if (response.statusCode() >= 500 && attempt < MAX_ATTEMPTS) {
+					log.warn("Translation request failed with HTTP status {}; retry {} of {}.", response.statusCode(), attempt, MAX_ATTEMPTS - 1);
+					continue;
+				}
+				return content(json, response.statusCode(), response.body());
+			}
 		}
 
-		static String requestBody(Gson json, String model, String prompt) {
-			return json.toJson(new OpenAiRequest(model, prompt));
+		/** Chat completions endpoint from API base URL, with or without trailing slash. */
+		static URI completionsUri(String baseUrl) {
+			String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+			return URI.create(base + "/chat/completions");
+		}
+
+		static String requestBody(Gson json, String model, boolean llamaCpp, String prompt) {
+			return json.toJson(new OpenAiRequest(model, llamaCpp, prompt));
 		}
 
 		/** Extract completion content from response or throw exception if request failed or response is truncated. */
 		static String content(Gson json, int statusCode, String body) throws IOException {
 			if (statusCode != 200) {
-				throw new IOException(String.format("OpenAI request failed with HTTP status %d: %s", statusCode, errorMessage(json, body)));
+				throw new IOException(String.format("Translation request failed with HTTP status %d: %s", statusCode, errorMessage(json, body)));
 			}
 
 			OpenAiResponse response;
 			try {
 				response = json.fromJson(body, OpenAiResponse.class);
 			} catch (JsonParseException e) {
-				throw new IOException("Invalid OpenAI response: " + e.getMessage(), e);
+				throw new IOException("Invalid translation response: " + e.getMessage(), e);
 			}
 			if (response == null || response.choices == null || response.choices.length == 0 || response.choices[0].message == null) {
-				throw new IOException("OpenAI response has no completion: " + body);
+				throw new IOException("Translation response has no completion: " + body);
 			}
 			Choice choice = response.choices[0];
 			if ("length".equals(choice.finish_reason)) {
-				throw new IOException("OpenAI response is truncated by tokens limit. Please reduce chunk length.");
+				throw new IOException("Translation response is truncated by tokens limit. Please reduce chunk length.");
 			}
 			if (choice.message.content == null) {
-				throw new IOException("OpenAI response has no content: " + body);
+				throw new IOException("Translation response has no content: " + body);
 			}
 			return choice.message.content;
 		}
@@ -237,6 +455,11 @@ public class Translator implements CommandHandler {
 		}
 	}
 
+	/** Strict about markdown structure since local models tend to alter it. */
+	static final String SYSTEM_PROMPT = "You are a professional translator. Reply with the translation only, without any comment. " //
+			+ "Keep the markdown structure exactly as in the source: same lines and blank lines, headings, list markers, table rows and pipes, bold, italic, links and code. " //
+			+ "Do not add characters that are not in the source. For Java properties keep keys unchanged and translate only values.";
+
 	@SuppressWarnings("unused")
 	private static class OpenAiRequest {
 		final Message[] messages;
@@ -244,16 +467,32 @@ public class Translator implements CommandHandler {
 		final int n;
 		final float temperature;
 		final String model;
+		/**
+		 * Chat template arguments for llama.cpp server, which runs thinking models with thinking enabled by default. With
+		 * thinking enabled Gemma 4 often answers with an empty thinking channel the server fails to parse, responding with
+		 * HTTP status 500 "Failed to parse input". With thinking disabled this is rare and handled by retry.
+		 */
+		final TemplateArguments chat_template_kwargs;
 
-		OpenAiRequest(String model, String prompt) {
+		OpenAiRequest(String model, boolean llamaCpp, String prompt) {
 			this.messages = new Message[] { //
-					new Message("system", "You are a helpful assistant that translates formatted text. For Java properties file please preserve original keys."), //
+					new Message("system", SYSTEM_PROMPT), //
 					new Message("user", prompt) //
 			};
 			this.max_tokens = 2400;
 			this.n = 1;
-			this.temperature = 0.5F;
+			this.temperature = 0.2F;
 			this.model = model;
+			this.chat_template_kwargs = llamaCpp ? new TemplateArguments(false) : null;
+		}
+	}
+
+	@SuppressWarnings("unused")
+	private static class TemplateArguments {
+		final boolean enable_thinking;
+
+		TemplateArguments(boolean enableThinking) {
+			this.enable_thinking = enableThinking;
 		}
 	}
 
