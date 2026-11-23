@@ -14,13 +14,11 @@ import org.commonmark.ext.gfm.tables.TableBody;
 import org.commonmark.ext.gfm.tables.TableCell;
 import org.commonmark.ext.gfm.tables.TableHead;
 import org.commonmark.ext.gfm.tables.TableRow;
-import org.commonmark.node.Link;
-import org.commonmark.node.Node;
-import org.commonmark.node.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CustomVisitor;
+import com.jslib.md.PlainText;
 
 public class XlsxVisitor extends CustomVisitor {
 	private static final Logger log = LoggerFactory.getLogger(XlsxVisitor.class);
@@ -97,18 +95,14 @@ public class XlsxVisitor extends CustomVisitor {
 	public void visit(TableCell cell) {
 		log.trace("visit table cell");
 
-		String text = null;
-		Node node = cell.getFirstChild();
-		if(node instanceof Link) {
-			node = node.getFirstChild();
-		}
-		if (node instanceof Text) {
-			text = ((Text)node).getLiteral();
-		}
+		String text = PlainText.of(cell);
 		log.trace("Cell text: {}", text);
 
 		Cell xlsxCell = xlsxRow.createCell(xlsxCellIndex++);
-		xlsxCell.setCellValue(text);
+		if (!text.isEmpty()) {
+			// empty markdown cell is left blank
+			xlsxCell.setCellValue(text);
+		}
 		xlsxCell.setCellStyle(xlsxRowIndex == 1 ? xlsxHeaderStyle : xlsxCellStyle);
 
 		super.visit(cell);

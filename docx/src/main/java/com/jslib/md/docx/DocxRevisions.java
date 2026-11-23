@@ -9,16 +9,12 @@ import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.commonmark.ext.gfm.tables.TableCell;
 import org.commonmark.ext.gfm.tables.TableHead;
 import org.commonmark.ext.gfm.tables.TableRow;
-import org.commonmark.node.AbstractVisitor;
-import org.commonmark.node.Code;
-import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.Node;
-import org.commonmark.node.SoftLineBreak;
-import org.commonmark.node.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CustomVisitor;
+import com.jslib.md.PlainText;
 
 /**
  * Copy revisions markdown table body rows into document template revisions table, that is the second table from
@@ -58,36 +54,6 @@ public class DocxRevisions extends CustomVisitor {
 		}
 		for (int i = 0; i < Math.min(columnsCount, cellTexts.size()); ++i) {
 			row.getCell(i).setText(cellTexts.get(i));
-		}
-	}
-
-	private static class PlainText extends AbstractVisitor {
-		static String of(Node node) {
-			PlainText visitor = new PlainText();
-			node.accept(visitor);
-			return visitor.builder.toString().trim();
-		}
-
-		private final StringBuilder builder = new StringBuilder();
-
-		@Override
-		public void visit(Text text) {
-			builder.append(text.getLiteral());
-		}
-
-		@Override
-		public void visit(Code code) {
-			builder.append(code.getLiteral());
-		}
-
-		@Override
-		public void visit(SoftLineBreak softLineBreak) {
-			builder.append(' ');
-		}
-
-		@Override
-		public void visit(HardLineBreak hardLineBreak) {
-			builder.append(' ');
 		}
 	}
 }

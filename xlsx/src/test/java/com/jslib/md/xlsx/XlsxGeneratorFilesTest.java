@@ -1,0 +1,104 @@
+package com.jslib.md.xlsx;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+public class XlsxGeneratorFilesTest {
+	private static final String TABLE = "|Name|Value|\n|-|-|\n|a|1|\n";
+	private static final String LONG_NAME = "a-markdown-file-name-longer-than-excel-limit";
+
+	private File documentDir;
+
+	@Before
+	public void beforeTest() throws IOException {
+		documentDir = Files.createTempDirectory("XlsxGeneratorFilesTest").toFile();
+	}
+
+	@After
+	public void afterTest() {
+		for (File file : documentDir.listFiles()) {
+			file.delete();
+		}
+		documentDir.delete();
+	}
+
+	@Test
+	public void GivenFormattedAndEmptyCells_WhenExecute_ThenWritePlainTextAndBlankCells() throws Exception {
+		// given
+		write("table.md", "|Name|Description|Note|\n|-|-|-|\n|**Bold** name|See [site](https://x.org) and `code`||\n");
+
+		// when
+		Workbook workbook = execute();
+
+		// then
+		Row row = workbook.getSheet("table").getRow(1);
+		assertThat(row.getCell(0).getStringCellValue(), equalTo("Bold name"));
+		assertThat(row.getCell(1).getStringCellValue(), equalTo("See site and code"));
+		assertThat(row.getCell(2).getCellType(), equalTo(CellType.BLANK));
+	}
+
+	@Test
+	public void GivenFileWithoutTable_WhenExecute_ThenSkipFile() throws Exception {
+		// given
+		write("notes.md", "# Notes\n\nNo table here.\n");
+		write("table.md", TABLE);
+
+		// when
+		Workbook workbook = execute();
+
+		// then
+		assertThat(sheetNames(workbook), contains("table"));
+	}
+
+	@Test
+	public void GivenLongAndInvalidFileNames_WhenExecute_ThenCreateValidUniqueSheetNamesInFileOrder() throws Exception {
+		// given
+		write("c[1].md", TABLE);
+		write(LONG_NAME + "-two.md", TABLE);
+		write(LONG_NAME + "-one.md", TABLE);
+
+		// when
+		Workbook workbook = execute();
+
+		// then
+		String truncated = LONG_NAME.substring(0, 31);
+		assertThat(sheetNames(workbook), contains(truncated, truncated.substring(0, 27) + " (2)", "c_1_"));
+	}
+
+	private void write(String fileName, String content) throws IOException {
+		Files.write(new File(documentDir, fileName).toPath(), content.getBytes(StandardCharsets.UTF_8));
+	}
+
+	private Workbook execute() throws Exception {
+		new XlsxGenerator().execute(documentDir);
+		try (FileInputStream stream = new FileInputStream(new File(documentDir, "document.xlsx"))) {
+			return new XSSFWorkbook(stream);
+		}
+	}
+
+	private static List<String> sheetNames(Workbook workbook) {
+		List<String> names = new ArrayList<>();
+		for (Sheet sheet : workbook) {
+			names.add(sheet.getSheetName());
+		}
+		return names;
+	}
+}

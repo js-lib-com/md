@@ -3,15 +3,19 @@ package com.jslib.md.xlsx;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 
+import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.commonmark.Extension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
@@ -53,17 +57,33 @@ public class XlsxGenerator implements CommandHandler {
 
 		try (Workbook workbook = new XSSFWorkbook()) {
 			File[] markdownFiles = sourceDir.listFiles(file -> file.getName().endsWith(".md"));
-			assert markdownFiles != null : "Error listing markdown directory";
+			if (markdownFiles == null) {
+				throw new IOException("Fail to list source directory " + sourceDir);
+			}
+			// sheets order follows file names
+			Arrays.sort(markdownFiles, Comparator.comparing(File::getName));
+
 			for (File markdownFile : markdownFiles) {
-				Sheet sheet = workbook.createSheet(markdownFile.getName().substring(0, markdownFile.getName().length() - 3));
 				log.debug("Process markdown file {}", markdownFile);
+				String fileName = markdownFile.getName();
+				Sheet sheet = workbook.createSheet(sheetName(workbook, fileName.substring(0, fileName.length() - 3)));
 				try (InputStreamReader reader = new InputStreamReader(new FileInputStream(markdownFile), StandardCharsets.UTF_8)) {
 					XlsxVisitor visitor = new XlsxVisitor(sheet);
 					parser.parseReader(reader).accept(visitor);
 				}
-				for (int columnIndex = 0; columnIndex < sheet.getRow(0).getLastCellNum(); columnIndex++) {
+
+				Row headerRow = sheet.getRow(0);
+				if (headerRow == null) {
+					log.warn("Skip markdown file without table {}", markdownFile);
+					workbook.removeSheetAt(workbook.getSheetIndex(sheet));
+					continue;
+				}
+				for (int columnIndex = 0; columnIndex < headerRow.getLastCellNum(); columnIndex++) {
 					sheet.autoSizeColumn(columnIndex);
 				}
+			}
+			if (workbook.getNumberOfSheets() == 0) {
+				log.warn("No markdown tables found in {}", sourceDir);
 			}
 
 			try (FileOutputStream outputStream = new FileOutputStream(new File(documentDir, projectProperties.fileName + ".xlsx"))) {
@@ -71,4 +91,21 @@ public class XlsxGenerator implements CommandHandler {
 			}
 		}
 	}
+
+	/**
+	 * Valid sheet name derived from markdown file base name: invalid characters are replaced by underscore, length is limited to
+	 * Excel maximum of 31 characters and a numeric suffix is added if the name is already used.
+	 */
+	static String sheetName(Workbook workbook, String baseName) {
+		String safeName = WorkbookUtil.createSafeSheetName(baseName, '_');
+		String name = safeName;
+		// sheet names are case insensitive and so is workbook sheet lookup
+		for (int index = 2; workbook.getSheet(name) != null; ++index) {
+			String suffix = " (" + index + ")";
+			name = safeName.substring(0, Math.min(safeName.length(), MAX_SHEET_NAME_LENGTH - suffix.length())) + suffix;
+		}
+		return name;
+	}
+
+	private static final int MAX_SHEET_NAME_LENGTH = 31;
 }
