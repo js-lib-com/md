@@ -93,7 +93,9 @@ public class XlsxGenerator implements CommandHandler {
 				log.warn("No markdown tables found in {}", sourceDir);
 			}
 
-			try (FileOutputStream outputStream = new FileOutputStream(new File(documentDir, projectProperties.fileName + ".xlsx"))) {
+			File targetFile = new File(documentDir, projectProperties.fileName + ".xlsx");
+			log.info("Generate {}", targetFile);
+			try (FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 				workbook.write(outputStream);
 			}
 		}

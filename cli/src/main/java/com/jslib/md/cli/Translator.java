@@ -2,6 +2,8 @@ package com.jslib.md.cli;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -13,47 +15,58 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
+import com.jslib.md.CommandHandler;
 
 /**
  * Translate document sources from English to Romanian using OpenAI chat completions API. API key is read from
  * <code>OPENAI_API_KEY</code> environment variable, with <code>OPENAI_KEY</code> environment variable and system property
  * as fallback. Model can be changed with <code>OPENAI_MODEL</code> environment variable or system property.
  */
-public class Translator {
-	public static void main(String[] args) {
-		String[] files = { "document.md", "revisions.md", "document.properties" };
-		Path workingDir = Path.of(args.length > 0 ? args[0] : ".");
+public class Translator implements CommandHandler {
+	private static final Logger log = LoggerFactory.getLogger(Translator.class);
 
-		Translator translator;
-		try {
-			translator = new Translator(new OpenAiClient(HttpClient.newHttpClient(), apiKey(), model()));
-		} catch (IllegalStateException e) {
-			System.err.println(e.getMessage());
-			return;
-		}
+	private static final String[] FILES = { "document.md", "revisions.md", "document.properties" };
 
-		for (String file : files) {
-			Path source = workingDir.resolve(file);
+	/**
+	 * Translate document sources from document directory and write translated files beside, with <code>_ro</code>
+	 * suffix. A target file is written only if all its chunks are translated; translation continues with next file on
+	 * failure and execution fails at the end if any file was not translated.
+	 */
+	@Override
+	public void execute(File documentDir) throws Exception {
+		Translator translator = client != null ? this : new Translator(new OpenAiClient(HttpClient.newHttpClient(), apiKey(), model()));
+
+		int translated = 0;
+		int failed = 0;
+		for (String file : FILES) {
+			Path source = documentDir.toPath().resolve(file);
 			if (!Files.exists(source)) {
-				System.out.printf("Skip missing file %s%n", source);
+				log.warn("Skip missing file {}", source);
 				continue;
 			}
 			String format = file.endsWith(".md") ? "markdown" : "Java properties";
 			Path target = i18n(source, "ro");
 			try {
 				String text = translator.translate(Files.readString(source, UTF_8), format, "English", "Romanian");
-				// target file is written only if all source chunks were successfully translated
 				Files.writeString(target, text, UTF_8);
-				System.out.printf("Translate %s to %s%n", source, target);
+				log.info("Translate {} to {}", source, target);
+				++translated;
 			} catch (IOException e) {
-				System.err.printf("Fail to translate %s: %s%n", source, e.getMessage());
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				System.err.println("Translation interrupted.");
-				return;
+				log.error("Fail to translate {}: {}", source, e.getMessage());
+				++failed;
 			}
+		}
+
+		if (failed > 0) {
+			throw new IOException(String.format("Fail to translate %d of %d files.", failed, failed + translated));
+		}
+		if (translated == 0) {
+			throw new FileNotFoundException("No source files to translate in " + documentDir);
 		}
 	}
 
@@ -103,6 +116,10 @@ public class Translator {
 	}
 
 	private final Client client;
+
+	public Translator() {
+		this(null);
+	}
 
 	Translator(Client client) {
 		this.client = client;

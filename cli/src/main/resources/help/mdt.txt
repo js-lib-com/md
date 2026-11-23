@@ -1,0 +1,20 @@
+Usage: mdt <command> [options] [document-dir]
+
+Generate documents from markdown sources.
+
+Commands:
+  docx        Generate Word documents (.docx) from markdown sources
+  xlsx        Generate an Excel workbook (.xlsx) from markdown tables
+  translate   Translate document sources from English to Romanian using OpenAI
+
+Arguments:
+  document-dir  Document directory, with project.properties and sources;
+                default is the current directory
+
+Options:
+  -h, --help     Show this help; use 'mdt <command> --help' for command help
+  -V, --version  Show version
+  -v, --verbose  Show debug messages and error stack traces
+  -q, --quiet    Show errors only
+
+Exit codes: 0 success, 1 generation error, 2 invalid arguments.

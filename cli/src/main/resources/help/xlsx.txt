@@ -1,0 +1,17 @@
+Usage: mdt xlsx [options] [document-dir]
+
+Generate an Excel workbook (.xlsx) from markdown tables, one sheet per markdown
+file, in file name order. Files without tables are skipped.
+
+Project properties:
+  file.name               Generated file name, without extension; default document
+  source.dir              Directory with markdown files; default document directory
+  table.auto.fit          Compute columns width from text quantity; default false
+  table.column.min.width  Minimal column width, in percent; default 10
+  table.column.outliers   Percent of cells ignored at each end; default 20
+  xlsx.table.width        Total table width, in characters; default 100
+
+Options:
+  -h, --help     Show this help
+  -v, --verbose  Show debug messages and error stack traces
+  -q, --quiet    Show errors only

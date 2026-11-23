@@ -7,6 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -39,6 +41,7 @@ public class DocxTemplate {
 			throw new IOException("Missing template resource " + TEMPLATE_RESOURCE);
 		}
 
+		Set<String> missingVariables = new TreeSet<>();
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		try (ZipInputStream zipInput = new ZipInputStream(templateStream); ZipOutputStream zipOutput = new ZipOutputStream(buffer)) {
 			ZipEntry entry;
@@ -46,7 +49,7 @@ public class DocxTemplate {
 				log.debug("Process template entry: {}", entry.getName());
 				byte[] bytes = zipInput.readAllBytes();
 				if (isXml(entry.getName())) {
-					bytes = inject(new String(bytes, UTF_8), properties).getBytes(UTF_8);
+					bytes = inject(new String(bytes, UTF_8), properties, missingVariables).getBytes(UTF_8);
 				}
 				zipOutput.putNextEntry(new ZipEntry(entry.getName()));
 				zipOutput.write(bytes);
@@ -54,6 +57,10 @@ public class DocxTemplate {
 			}
 		}
 		this.document = buffer.toByteArray();
+
+		if (!missingVariables.isEmpty()) {
+			log.warn("Missing values for template variables, replaced by variable names: {}", String.join(", ", missingVariables));
+		}
 	}
 
 	public InputStream getInputStream() {
@@ -62,13 +69,18 @@ public class DocxTemplate {
 	}
 
 	static String inject(String xml, Properties properties) {
+		return inject(xml, properties, new TreeSet<>());
+	}
+
+	/** Replace variables in XML text; names of variables without value are collected in missing variables set. */
+	static String inject(String xml, Properties properties, Set<String> missingVariables) {
 		Matcher matcher = VARIABLE.matcher(xml);
 		StringBuilder builder = new StringBuilder();
 		while (matcher.find()) {
 			String name = matcher.group(1);
 			String value = properties.getProperty(name);
 			if (value == null) {
-				log.warn("Missing value for template variable {}", name);
+				missingVariables.add(name);
 				value = name;
 			}
 			log.debug("Replace variable value: {}: {}", name, value);

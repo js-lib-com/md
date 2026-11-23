@@ -1,0 +1,14 @@
+Usage: mdt translate [options] [document-dir]
+
+Translate document.md, revisions.md and document.properties from English to
+Romanian using OpenAI, writing document_ro.md, revisions_ro.md and
+document_ro.properties. A file is written only if fully translated.
+
+Environment:
+  OPENAI_API_KEY  OpenAI API key, required
+  OPENAI_MODEL    OpenAI model; default gpt-4o-mini
+
+Options:
+  -h, --help     Show this help
+  -v, --verbose  Show debug messages and error stack traces
+  -q, --quiet    Show errors only

@@ -59,13 +59,11 @@ public class DocxGenerator implements CommandHandler {
 
 		File documentPropertiesFile = new File(documentDir, "document.properties");
 		if (!documentPropertiesFile.exists()) {
-			System.out.printf("Missing document properties file %s .\r\n", documentPropertiesFile);
-			return;
+			throw new FileNotFoundException("Missing document properties file " + documentPropertiesFile);
 		}
 		File revisionsFile = new File(documentDir, "revisions.md");
 		if (!revisionsFile.exists()) {
-			System.out.printf("Missing document revisions file %s .\r\n", revisionsFile);
-			return;
+			throw new FileNotFoundException("Missing document revisions file " + revisionsFile);
 		}
 
 		if (language != null) {
@@ -104,14 +102,12 @@ public class DocxGenerator implements CommandHandler {
 			sourceFile = new File(documentDir, sourceFileName);
 		}
 		if (!sourceFile.exists()) {
-			System.out.printf("Missing source file %s .\r\n", sourceFile);
-			return;
+			throw new FileNotFoundException("Missing source file " + sourceFile);
 		}
 
 		int extensionPosition = sourceFile.getName().lastIndexOf('.');
 		if (extensionPosition == -1) {
-			System.out.printf("Missing extension on file %s .\r\n", sourceFile);
-			return;
+			throw new FileNotFoundException("Missing extension on file " + sourceFile);
 		}
 
 		Properties documentProperties = new Properties();
@@ -134,7 +130,9 @@ public class DocxGenerator implements CommandHandler {
 			parser.parseReader(reader).accept(documentVisitor);
 		}
 
-		try (FileOutputStream outputStream = new FileOutputStream(new File(documentDir, targetFileName))) {
+		File targetFile = new File(documentDir, targetFileName);
+		log.info("Generate {}", targetFile);
+		try (FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 			documentVisitor.getDocument().write(outputStream);
 		}
 	}
