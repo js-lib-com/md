@@ -1,14 +1,21 @@
 package com.jslib.md.xlsx;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.Hyperlink;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.RichTextString;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.commonmark.ext.gfm.tables.TableBlock;
 import org.commonmark.ext.gfm.tables.TableBody;
 import org.commonmark.ext.gfm.tables.TableCell;
@@ -18,7 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CustomVisitor;
-import com.jslib.md.PlainText;
+import com.jslib.md.InlineHtml.Format;
 
 public class XlsxVisitor extends CustomVisitor {
 	private static final Logger log = LoggerFactory.getLogger(XlsxVisitor.class);
@@ -95,16 +102,103 @@ public class XlsxVisitor extends CustomVisitor {
 	public void visit(TableCell cell) {
 		log.trace("visit table cell");
 
-		String text = PlainText.of(cell);
+		boolean header = xlsxRowIndex == 1;
+		CellContent content = CellContent.of(cell);
+		String text = content.text();
 		log.trace("Cell text: {}", text);
 
 		Cell xlsxCell = xlsxRow.createCell(xlsxCellIndex++);
+		// empty markdown cell is left blank
 		if (!text.isEmpty()) {
-			// empty markdown cell is left blank
-			xlsxCell.setCellValue(text);
+			if (content.isFormatted()) {
+				xlsxCell.setCellValue(richText(content, header));
+			} else {
+				xlsxCell.setCellValue(text);
+			}
 		}
-		xlsxCell.setCellStyle(xlsxRowIndex == 1 ? xlsxHeaderStyle : xlsxCellStyle);
 
-		super.visit(cell);
+		// line breaks are visible only if cell text is wrapped
+		boolean wrap = text.indexOf('\n') != -1;
+		xlsxCell.setCellStyle(header ? (wrap ? wrapped(xlsxHeaderStyle) : xlsxHeaderStyle) : (wrap ? wrapped(xlsxCellStyle) : xlsxCellStyle));
+
+		if (content.linkDestination() != null) {
+			hyperlink(xlsxCell, content.linkDestination());
+		}
+	}
+
+	private RichTextString richText(CellContent content, boolean header) {
+		Workbook workbook = sheet.getWorkbook();
+		RichTextString richText = workbook.getCreationHelper().createRichTextString(content.text());
+		int position = 0;
+		for (CellContent.Segment segment : content.segments()) {
+			int end = position + segment.text.length();
+			if (!segment.isPlain()) {
+				// segments without explicit font use cell style font
+				richText.applyFont(position, end, font(segment, header));
+			}
+			position = end;
+		}
+		return richText;
+	}
+
+	private final Map<String, Font> fonts = new HashMap<>();
+
+	private Font font(CellContent.Segment segment, boolean header) {
+		if (segment.formats.contains(Format.HIGHLIGHT)) {
+			log.debug("Highlight is not supported on XLSX cell text segments.");
+		}
+		String key = header + ":" + segment.link + ":" + segment.formats;
+		return fonts.computeIfAbsent(key, k -> {
+			Font font = sheet.getWorkbook().createFont();
+			if (header) {
+				font.setColor(IndexedColors.WHITE.getIndex());
+			}
+			if (segment.formats.contains(Format.BOLD)) {
+				font.setBold(true);
+			}
+			if (segment.formats.contains(Format.ITALIC)) {
+				font.setItalic(true);
+			}
+			if (segment.formats.contains(Format.UNDERLINE) || segment.link) {
+				font.setUnderline(Font.U_SINGLE);
+			}
+			if (segment.formats.contains(Format.STRIKE)) {
+				font.setStrikeout(true);
+			}
+			if (segment.formats.contains(Format.CODE)) {
+				font.setFontName("Consolas");
+			}
+			if (segment.formats.contains(Format.SUPERSCRIPT)) {
+				font.setTypeOffset(Font.SS_SUPER);
+			} else if (segment.formats.contains(Format.SUBSCRIPT)) {
+				font.setTypeOffset(Font.SS_SUB);
+			}
+			if (segment.link && !header) {
+				font.setColor(IndexedColors.BLUE.getIndex());
+			}
+			return font;
+		});
+	}
+
+	private final Map<CellStyle, CellStyle> wrappedStyles = new HashMap<>();
+
+	private CellStyle wrapped(CellStyle style) {
+		return wrappedStyles.computeIfAbsent(style, s -> {
+			CellStyle wrapped = sheet.getWorkbook().createCellStyle();
+			wrapped.cloneStyleFrom(s);
+			wrapped.setWrapText(true);
+			return wrapped;
+		});
+	}
+
+	/** Set cell hyperlink; Excel supports a single hyperlink per cell so only the first cell link is used. */
+	private void hyperlink(Cell cell, String destination) {
+		try {
+			Hyperlink hyperlink = sheet.getWorkbook().getCreationHelper().createHyperlink(HyperlinkType.URL);
+			hyperlink.setAddress(destination);
+			cell.setHyperlink(hyperlink);
+		} catch (IllegalArgumentException e) {
+			log.warn("Ignore invalid cell hyperlink {}: {}", destination, e.getMessage());
+		}
 	}
 }

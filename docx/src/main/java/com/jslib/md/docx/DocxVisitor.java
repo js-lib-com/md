@@ -7,11 +7,8 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.codec.DecoderException;
@@ -81,6 +78,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CustomVisitor;
+import com.jslib.md.InlineHtml;
+import com.jslib.md.InlineHtml.Format;
 import com.jslib.md.docx.template.DocxTemplate;
 import com.jslib.md.docx.util.Color;
 import com.jslib.md.docx.util.Dimensions;
@@ -380,27 +379,27 @@ public class DocxVisitor extends CustomVisitor {
 	}
 
 	private void applyEmphasis(XWPFRun run) {
-		if (italicDepth > 0 || htmlFormats.isOpen(HtmlFormat.ITALIC)) {
+		if (italicDepth > 0 || htmlFormats.isOpen(Format.ITALIC)) {
 			run.setItalic(true);
 		}
-		if (boldDepth > 0 || htmlFormats.isOpen(HtmlFormat.BOLD)) {
+		if (boldDepth > 0 || htmlFormats.isOpen(Format.BOLD)) {
 			run.setBold(true);
 		}
-		if (htmlFormats.isOpen(HtmlFormat.UNDERLINE)) {
+		if (htmlFormats.isOpen(Format.UNDERLINE)) {
 			run.setUnderline(UnderlinePatterns.SINGLE);
 		}
-		if (htmlFormats.isOpen(HtmlFormat.STRIKE)) {
+		if (htmlFormats.isOpen(Format.STRIKE)) {
 			run.setStrikeThrough(true);
 		}
-		if (htmlFormats.isOpen(HtmlFormat.CODE)) {
+		if (htmlFormats.isOpen(Format.CODE)) {
 			run.setStyle(DocxStyles.getQuoteCharStyleId());
 		}
-		if (htmlFormats.isOpen(HtmlFormat.SUPERSCRIPT)) {
+		if (htmlFormats.isOpen(Format.SUPERSCRIPT)) {
 			run.setVerticalAlignment("superscript");
-		} else if (htmlFormats.isOpen(HtmlFormat.SUBSCRIPT)) {
+		} else if (htmlFormats.isOpen(Format.SUBSCRIPT)) {
 			run.setVerticalAlignment("subscript");
 		}
-		if (htmlFormats.isOpen(HtmlFormat.HIGHLIGHT)) {
+		if (htmlFormats.isOpen(Format.HIGHLIGHT)) {
 			run.setTextHighlightColor("yellow");
 		}
 	}
@@ -408,46 +407,8 @@ public class DocxVisitor extends CustomVisitor {
 	// ------------------------------------------------------------------------
 	// inline HTML
 
-	enum HtmlFormat {
-		BOLD, ITALIC, UNDERLINE, STRIKE, CODE, SUPERSCRIPT, SUBSCRIPT, HIGHLIGHT
-	}
-
-	private static final Map<String, HtmlFormat> HTML_FORMAT_TAGS = Map.ofEntries( //
-			Map.entry("b", HtmlFormat.BOLD), Map.entry("strong", HtmlFormat.BOLD), //
-			Map.entry("i", HtmlFormat.ITALIC), Map.entry("em", HtmlFormat.ITALIC), Map.entry("cite", HtmlFormat.ITALIC), Map.entry("var", HtmlFormat.ITALIC), //
-			Map.entry("u", HtmlFormat.UNDERLINE), Map.entry("ins", HtmlFormat.UNDERLINE), //
-			Map.entry("s", HtmlFormat.STRIKE), Map.entry("del", HtmlFormat.STRIKE), Map.entry("strike", HtmlFormat.STRIKE), //
-			Map.entry("code", HtmlFormat.CODE), Map.entry("kbd", HtmlFormat.CODE), Map.entry("samp", HtmlFormat.CODE), Map.entry("tt", HtmlFormat.CODE), //
-			Map.entry("sup", HtmlFormat.SUPERSCRIPT), Map.entry("sub", HtmlFormat.SUBSCRIPT), //
-			Map.entry("mark", HtmlFormat.HIGHLIGHT));
-
-	private static final Pattern HTML_INLINE_TAG = Pattern.compile("^<\\s*(/?)\\s*([a-zA-Z][a-zA-Z0-9]*)\\b([^>]*)>$", Pattern.DOTALL);
-	private static final Pattern HTML_HREF = Pattern.compile("\\bhref\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", Pattern.CASE_INSENSITIVE);
-
-	/** Open inline HTML formats with nesting depth. Unbalanced tags are tolerated and state is reset on every block. */
-	private static class HtmlFormats {
-		private final int[] depths = new int[HtmlFormat.values().length];
-
-		boolean isOpen(HtmlFormat format) {
-			return depths[format.ordinal()] > 0;
-		}
-
-		void open(HtmlFormat format) {
-			++depths[format.ordinal()];
-		}
-
-		void close(HtmlFormat format) {
-			if (depths[format.ordinal()] > 0) {
-				--depths[format.ordinal()];
-			}
-		}
-
-		void reset() {
-			Arrays.fill(depths, 0);
-		}
-	}
-
-	private final HtmlFormats htmlFormats = new HtmlFormats();
+	/** Open inline HTML formats, reset on every block so that unbalanced tags do not leak. */
+	private final InlineHtml.Formats htmlFormats = new InlineHtml.Formats();
 
 	/** Reset inline state at the start of a block with inline content so that unbalanced inline HTML does not leak. */
 	private void startInlineContent() {
@@ -463,47 +424,26 @@ public class DocxVisitor extends CustomVisitor {
 	@Override
 	public void visit(HtmlInline htmlInline) {
 		log.trace("visit(HtmlInline htmlInline)");
-		String literal = htmlInline.getLiteral();
-		Matcher matcher = HTML_INLINE_TAG.matcher(literal);
-		if (!matcher.matches()) {
-			log.debug("Ignore inline HTML: {}", literal);
+		InlineHtml.Tag tag = InlineHtml.parse(htmlInline.getLiteral());
+		if (tag == null) {
+			log.debug("Ignore inline HTML: {}", htmlInline.getLiteral());
+			return;
+		}
+		if (htmlFormats.apply(tag)) {
 			return;
 		}
 
-		boolean closing = !matcher.group(1).isEmpty();
-		String tag = matcher.group(2).toLowerCase();
-		String attributes = matcher.group(3);
-
-		HtmlFormat format = HTML_FORMAT_TAGS.get(tag);
-		if (format != null) {
-			if (closing) {
-				htmlFormats.close(format);
-			} else if (!attributes.strip().endsWith("/")) {
-				htmlFormats.open(format);
-			}
-			return;
-		}
-
-		switch (tag) {
-		case "br":
+		if (tag.isLineBreak()) {
 			createInlineRun().addBreak();
-			break;
-
-		case "a":
-			if (closing) {
+		} else if (tag.isAnchor()) {
+			if (tag.closing) {
 				// anchor without text does not leave pending hyperlink run for following text
 				currentRun = null;
-				break;
+			} else if (tag.href() != null) {
+				startHyperlink(tag.href());
 			}
-			Matcher href = HTML_HREF.matcher(attributes);
-			if (href.find()) {
-				String destination = href.group(1) != null ? href.group(1) : href.group(2) != null ? href.group(2) : href.group(3);
-				startHyperlink(destination.replace("&amp;", "&"));
-			}
-			break;
-
-		default:
-			log.debug("Ignore unsupported inline HTML tag: {}", literal);
+		} else {
+			log.debug("Ignore unsupported inline HTML tag: {}", htmlInline.getLiteral());
 		}
 	}
 
