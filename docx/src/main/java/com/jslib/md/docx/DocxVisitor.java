@@ -32,11 +32,13 @@ import org.commonmark.node.BulletList;
 import org.commonmark.node.Code;
 import org.commonmark.node.Emphasis;
 import org.commonmark.node.FencedCodeBlock;
+import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.Heading;
 import org.commonmark.node.Image;
 import org.commonmark.node.Link;
 import org.commonmark.node.ListItem;
 import org.commonmark.node.Paragraph;
+import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.StrongEmphasis;
 import org.commonmark.node.Text;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTEffectList;
@@ -220,7 +222,7 @@ public class DocxVisitor extends CustomVisitor {
 	public void visit(Code code) {
 		log.trace("visit(Code code)");
 		log.debug("Code literal: {}", code.getLiteral());
-		XWPFRun run = currentParagraph.createRun();
+		XWPFRun run = createInlineRun();
 		run.setText(code.getLiteral());
 		run.setStyle(DocxStyles.getQuoteCharStyleId());
 		super.visit(code);
@@ -253,35 +255,64 @@ public class DocxVisitor extends CustomVisitor {
 		currentParagraph.setBorderLeft(Borders.NONE);
 	}
 
+	// emphasis nesting depth; every inline run created while inside emphasis inherits its formatting
+	private int italicDepth;
+	private int boldDepth;
+
 	@Override
 	public void visit(Emphasis emphasis) {
 		log.trace("visit(Emphasis emphasis)");
-		assert currentParagraph != null;
-		log.debug("Create run");
-		currentRun = currentParagraph.createRun();
-		log.debug("Set run italic");
-		currentRun.setItalic(true);
+		++italicDepth;
 		super.visit(emphasis);
+		--italicDepth;
 	}
 
 	@Override
 	public void visit(StrongEmphasis strongEmphasis) {
 		log.trace("visit(StrongEmphasis strongEmphasis)");
+		++boldDepth;
+		super.visit(strongEmphasis);
+		--boldDepth;
+	}
+
+	/** Create a run on current paragraph with formatting from enclosing emphasis. */
+	private XWPFRun createInlineRun() {
 		assert currentParagraph != null;
 		log.debug("Create run");
-		currentRun = currentParagraph.createRun();
-		log.debug("Set run bold");
-		currentRun.setBold(true);
-		super.visit(strongEmphasis);
+		XWPFRun run = currentParagraph.createRun();
+		applyEmphasis(run);
+		return run;
+	}
+
+	private void applyEmphasis(XWPFRun run) {
+		if (italicDepth > 0) {
+			run.setItalic(true);
+		}
+		if (boldDepth > 0) {
+			run.setBold(true);
+		}
+	}
+
+	@Override
+	public void visit(SoftLineBreak softLineBreak) {
+		log.trace("visit(SoftLineBreak softLineBreak)");
+		// markdown source line break inside a paragraph is rendered as a space
+		createInlineRun().setText(" ");
+	}
+
+	@Override
+	public void visit(HardLineBreak hardLineBreak) {
+		log.trace("visit(HardLineBreak hardLineBreak)");
+		createInlineRun().addBreak();
 	}
 
 	@Override
 	public void visit(Text text) {
 		log.trace("visit(Text text)");
 		if (currentRun == null) {
-			assert currentParagraph != null;
-			log.debug("Create run");
-			currentRun = currentParagraph.createRun();
+			currentRun = createInlineRun();
+		} else {
+			applyEmphasis(currentRun);
 		}
 		String textLiteral = text.getLiteral();
 		if (pictureDescription) {
