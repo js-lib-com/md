@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.poi.xwpf.usermodel.Borders;
 import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFNum;
@@ -27,6 +28,8 @@ import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.parser.Parser;
 import org.junit.Before;
 import org.junit.Test;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBrType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
 
 import com.jslib.md.docx.template.DocxTemplate;
@@ -124,6 +127,61 @@ public class DocxVisitorBlockTest {
 		XWPFParagraph last = paragraphs.get(paragraphs.size() - 1);
 		assertThat(last.getText(), equalTo("Paragraph."));
 		assertThat(last.getNumID(), equalTo(null));
+	}
+
+	@Test
+	public void GivenIndentedCodeBlock_WhenVisit_ThenRenderLikeFencedCode() throws IOException, XmlException {
+		// when
+		List<XWPFParagraph> indented = generate("Text:\n\n    int x = 1;\n      return x;\n");
+		beforeTest();
+		List<XWPFParagraph> fenced = generate("Text:\n\n```\nint x = 1;\n  return x;\n```\n");
+
+		// then
+		assertThat(texts(indented), equalTo(texts(fenced)));
+		assertThat(texts(indented).subList(1, 3), contains("int x = 1;", "  return x;"));
+		assertThat(indented.get(1).getStyle(), equalTo("NoSpacing"));
+		assertThat(indented.get(1).getRuns().get(0).getFontFamily(), equalTo("Consolas"));
+		assertThat(indented.get(1).getBorderLeft(), equalTo(Borders.SINGLE));
+	}
+
+	@Test
+	public void GivenThematicBreak_WhenVisit_ThenAddParagraphWithBottomBorder() throws IOException, XmlException {
+		// when
+		List<XWPFParagraph> paragraphs = generate("Before.\n\n***\n\nAfter.");
+
+		// then
+		assertThat(texts(paragraphs), contains("Before.", "", "After."));
+		assertThat(paragraphs.get(1).getBorderBottom(), equalTo(Borders.SINGLE));
+		assertThat(paragraphs.get(2).getBorderBottom(), equalTo(Borders.NONE));
+	}
+
+	@Test
+	public void GivenHtmlComment_WhenVisit_ThenIgnore() throws IOException, XmlException {
+		// when
+		List<XWPFParagraph> paragraphs = generate("Before.\n\n<!-- author note\nspanning lines -->\n\nAfter.");
+
+		// then
+		assertThat(texts(paragraphs), contains("Before.", "After."));
+	}
+
+	@Test
+	public void GivenHtmlPageBreak_WhenVisit_ThenAddPageBreak() throws IOException, XmlException {
+		// when
+		List<XWPFParagraph> paragraphs = generate("Before.\n\n<div style=\"page-break-after: always\"></div>\n\nAfter.");
+
+		// then
+		assertThat(paragraphs, hasSize(3));
+		CTBr br = paragraphs.get(1).getRuns().get(0).getCTR().getBrArray(0);
+		assertThat(br.getType(), equalTo(STBrType.PAGE));
+	}
+
+	@Test
+	public void GivenHtmlBlock_WhenVisit_ThenRenderPlainTextPerBlockElement() throws IOException, XmlException {
+		// when
+		List<XWPFParagraph> paragraphs = generate("<div align=\"center\">\n<p>First <b>bold</b>\nline &amp; more</p>\n<p>Second&nbsp;line</p>\n</div>\n");
+
+		// then
+		assertThat(texts(paragraphs), contains("First bold line & more", "Second line"));
 	}
 
 	@Test

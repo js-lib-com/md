@@ -6,8 +6,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -36,7 +38,9 @@ import org.commonmark.node.Emphasis;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.HardLineBreak;
 import org.commonmark.node.Heading;
+import org.commonmark.node.HtmlBlock;
 import org.commonmark.node.Image;
+import org.commonmark.node.IndentedCodeBlock;
 import org.commonmark.node.Link;
 import org.commonmark.node.ListItem;
 import org.commonmark.node.OrderedList;
@@ -44,6 +48,7 @@ import org.commonmark.node.Paragraph;
 import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.StrongEmphasis;
 import org.commonmark.node.Text;
+import org.commonmark.node.ThematicBreak;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTEffectList;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTOuterShadowEffect;
 import org.openxmlformats.schemas.drawingml.x2006.main.CTPositiveFixedPercentage;
@@ -237,8 +242,23 @@ public class DocxVisitor extends CustomVisitor {
 	public void visit(FencedCodeBlock fencedCodeBlock) {
 		log.trace("visit(FencedCodeBlock fencedCodeBlock)");
 		log.debug("fencedCodeBlock.getInfo(): {}", fencedCodeBlock.getInfo());
-		// code block is rendered even if is the first block of a list item, case in which list item paragraph stays empty
-		Strings.lines(fencedCodeBlock.getLiteral()).forEach(line -> {
+		codeBlock(fencedCodeBlock.getLiteral());
+		super.visit(fencedCodeBlock);
+	}
+
+	@Override
+	public void visit(IndentedCodeBlock indentedCodeBlock) {
+		log.trace("visit(IndentedCodeBlock indentedCodeBlock)");
+		codeBlock(indentedCodeBlock.getLiteral());
+		super.visit(indentedCodeBlock);
+	}
+
+	/**
+	 * Render code literal, one paragraph per line. Code block is rendered even if is the first block of a list item, case
+	 * in which list item paragraph stays empty.
+	 */
+	private void codeBlock(String literal) {
+		Strings.lines(literal).forEach(line -> {
 			log.debug("Create paragraph");
 			currentParagraph = document.createParagraph();
 			currentParagraph.setStyle(DocxStyles.getNoSpacing());
@@ -256,8 +276,71 @@ public class DocxVisitor extends CustomVisitor {
 			run.setText(line);
 		});
 		ignoreParagraph = false;
-		super.visit(fencedCodeBlock);
+		// code literal ends with new line so last paragraph is empty; remove its border to not extend code block frame
 		currentParagraph.setBorderLeft(Borders.NONE);
+	}
+
+	@Override
+	public void visit(ThematicBreak thematicBreak) {
+		log.trace("visit(ThematicBreak thematicBreak)");
+		log.debug("Create horizontal rule paragraph");
+		currentParagraph = document.createParagraph();
+		currentParagraph.setBorderBottom(Borders.SINGLE);
+		indentToList(currentParagraph);
+		ignoreParagraph = false;
+	}
+
+	// ------------------------------------------------------------------------
+
+	private static final Pattern HTML_COMMENT = Pattern.compile("<!--.*?-->", Pattern.DOTALL);
+	private static final Pattern HTML_PAGE_BREAK = Pattern.compile("(page-)?break-(before|after)\\s*:\\s*(always|page)", Pattern.CASE_INSENSITIVE);
+	private static final Pattern HTML_BLOCK_TAG = Pattern.compile("</?(p|div|br|li|ul|ol|h[1-6]|tr|table|blockquote|pre|hr)\\b[^>]*>", Pattern.CASE_INSENSITIVE);
+	private static final Pattern HTML_TAG = Pattern.compile("<[^>]*>");
+
+	/**
+	 * HTML is not interpreted, except page break style. Comments are ignored and other HTML blocks are rendered as plain
+	 * text, one paragraph per HTML block element.
+	 */
+	@Override
+	public void visit(HtmlBlock htmlBlock) {
+		log.trace("visit(HtmlBlock htmlBlock)");
+		String html = HTML_COMMENT.matcher(htmlBlock.getLiteral()).replaceAll("");
+
+		if (HTML_PAGE_BREAK.matcher(html).find()) {
+			log.debug("Add page break for HTML page break style");
+			currentParagraph = document.createParagraph();
+			currentParagraph.createRun().addBreak(org.apache.poi.xwpf.usermodel.BreakType.PAGE);
+			ignoreParagraph = false;
+			return;
+		}
+
+		List<String> lines = htmlText(html);
+		if (lines.isEmpty()) {
+			log.debug("Ignore HTML block without text: {}", htmlBlock.getLiteral());
+			return;
+		}
+		log.warn("HTML formatting is not supported; render HTML block as plain text: {}", htmlBlock.getLiteral().strip());
+		for (String line : lines) {
+			currentParagraph = document.createParagraph();
+			indentToList(currentParagraph);
+			createInlineRun().setText(line);
+		}
+		ignoreParagraph = false;
+	}
+
+	static List<String> htmlText(String html) {
+		String text = html.replaceAll("\\s+", " ");
+		text = HTML_BLOCK_TAG.matcher(text).replaceAll("\n");
+		text = HTML_TAG.matcher(text).replaceAll("");
+		text = text.replace("&nbsp;", " ").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&apos;", "'").replace("&amp;", "&");
+
+		List<String> lines = new ArrayList<>();
+		for (String line : text.split("\n")) {
+			if (!line.isBlank()) {
+				lines.add(line.strip());
+			}
+		}
+		return lines;
 	}
 
 	// emphasis nesting depth; every inline run created while inside emphasis inherits its formatting
