@@ -20,5 +20,18 @@
 			<groupId>com.js-lib</groupId>
 			<artifactId>js-json</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.js-lib</groupId>
+			<artifactId>js-json-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.js-lib</groupId>
+			<artifactId>js-commons</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.js-lib</groupId>
+			<artifactId>js-log-api</artifactId>
+			<scope>runtime</scope>
+		</dependency>
 	</dependencies>
 </project>
