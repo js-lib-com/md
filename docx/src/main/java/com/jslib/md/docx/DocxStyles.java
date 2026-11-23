@@ -64,6 +64,10 @@ public class DocxStyles {
 			return HEADING3_STYLE_ID;
 		case 4:
 			return HEADING4_STYLE_ID;
+		case 5:
+		case 6:
+			// heading 5 and 6 styles are provided by document template
+			return "Heading" + level;
 		default:
 			throw new IllegalStateException("Unsuported level " + level);
 		}

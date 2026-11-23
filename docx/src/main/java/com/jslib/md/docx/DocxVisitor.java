@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 
 import org.apache.commons.codec.DecoderException;
@@ -37,6 +39,7 @@ import org.commonmark.node.Heading;
 import org.commonmark.node.Image;
 import org.commonmark.node.Link;
 import org.commonmark.node.ListItem;
+import org.commonmark.node.OrderedList;
 import org.commonmark.node.Paragraph;
 import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.StrongEmphasis;
@@ -206,6 +209,8 @@ public class DocxVisitor extends CustomVisitor {
 				log.debug("Set style: Quote");
 				currentParagraph.setStyle(DocxStyles.getIntenseQuoteStyleId());
 			}
+			// continuation paragraph of a loose list item is aligned with list item text
+			indentToList(currentParagraph);
 		}
 		ignoreParagraph = false;
 		super.visit(paragraph);
@@ -231,25 +236,25 @@ public class DocxVisitor extends CustomVisitor {
 	@Override
 	public void visit(FencedCodeBlock fencedCodeBlock) {
 		log.trace("visit(FencedCodeBlock fencedCodeBlock)");
-		log.debug("fencedCodeBlock.getInfo(): ", fencedCodeBlock.getInfo());
-		if (!ignoreParagraph) {
-			Strings.lines(fencedCodeBlock.getLiteral()).forEach(line -> {
-				log.debug("Create paragraph");
-				currentParagraph = document.createParagraph();
-				currentParagraph.setStyle(DocxStyles.getNoSpacing());
-				currentParagraph.setBorderLeft(Borders.SINGLE);
+		log.debug("fencedCodeBlock.getInfo(): {}", fencedCodeBlock.getInfo());
+		// code block is rendered even if is the first block of a list item, case in which list item paragraph stays empty
+		Strings.lines(fencedCodeBlock.getLiteral()).forEach(line -> {
+			log.debug("Create paragraph");
+			currentParagraph = document.createParagraph();
+			currentParagraph.setStyle(DocxStyles.getNoSpacing());
+			currentParagraph.setBorderLeft(Borders.SINGLE);
+			indentToList(currentParagraph);
 
-				log.debug("Create run");
-				XWPFRun run = currentParagraph.createRun();
-				run.setFontFamily("Consolas");
-				run.setFontSize(8);
-				run.setColor(Color.LIGHT_BLUE.name);
+			log.debug("Create run");
+			XWPFRun run = currentParagraph.createRun();
+			run.setFontFamily("Consolas");
+			run.setFontSize(8);
+			run.setColor(Color.LIGHT_BLUE.name);
 
-				CTText ctText = run.getCTR().addNewT();
-				ctText.setSpace(SpaceAttribute.Space.PRESERVE);
-				run.setText(line);
-			});
-		}
+			CTText ctText = run.getCTR().addNewT();
+			ctText.setSpace(SpaceAttribute.Space.PRESERVE);
+			run.setText(line);
+		});
 		ignoreParagraph = false;
 		super.visit(fencedCodeBlock);
 		currentParagraph.setBorderLeft(Borders.NONE);
@@ -502,14 +507,26 @@ public class DocxVisitor extends CustomVisitor {
 	@Override
 	public void visit(BulletList bulletList) {
 		log.trace("visit(BulletList bulletList)");
+		lists.push(numbering.getBulletsNumId());
 		super.visit(bulletList);
+		lists.pop();
+	}
+
+	@Override
+	public void visit(OrderedList orderedList) {
+		log.trace("visit(OrderedList orderedList)");
+		// every ordered list has its own numbering instance so that counting restarts from list start number
+		lists.push(numbering.addOrderedNum(listLevel(lists.size()), orderedList.getStartNumber()));
+		super.visit(orderedList);
+		lists.pop();
 	}
 
 	@Override
 	public void visit(ListItem listItem) {
 		log.trace("visit(ListItem listItem)");
+		assert !lists.isEmpty();
 
-		log.debug("Create bullet item");
+		log.debug("Create list item");
 		currentParagraph = document.createParagraph();
 		currentParagraph.setStyle(DocxStyles.getListStyleId());
 		ignoreParagraph = true;
@@ -517,8 +534,8 @@ public class DocxVisitor extends CustomVisitor {
 		log.debug("Set list item numbering");
 		// <w:pPr>
 		// ..<w:numPr>
-		// ....<w:ilvl w:val="0" />
-		// ....<w:numId w:val="1" />
+		// ....<w:ilvl w:val="1" />
+		// ....<w:numId w:val="7" />
 		// ..</w:numPr>
 		// </w:pPr>
 
@@ -536,15 +553,31 @@ public class DocxVisitor extends CustomVisitor {
 		if (ilvl == null) {
 			ilvl = numPr.addNewIlvl();
 		}
-		ilvl.setVal(BigInteger.ZERO);
+		ilvl.setVal(BigInteger.valueOf(listLevel(lists.size() - 1)));
 
 		CTDecimalNumber numId = numPr.getNumId();
 		if (numId == null) {
 			numId = numPr.addNewNumId();
 		}
-		numId.setVal(numbering.getBulletsNumId());
+		numId.setVal(lists.peek());
 
 		super.visit(listItem);
+		// empty list item does not consume pending list paragraph
+		ignoreParagraph = false;
+	}
+
+	// numbering instance IDs of currently open lists, innermost on top
+	private final Deque<BigInteger> lists = new ArrayDeque<>();
+
+	private static int listLevel(int depth) {
+		return Math.min(depth, DocxNumbering.maxLevel());
+	}
+
+	/** Align a block paragraph nested in a list with the text of the enclosing list item. */
+	private void indentToList(XWPFParagraph paragraph) {
+		if (!lists.isEmpty()) {
+			paragraph.setIndentationLeft(DocxNumbering.textIndent(listLevel(lists.size() - 1)));
+		}
 	}
 
 	// ------------------------------------------------------------------------
