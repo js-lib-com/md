@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import com.jslib.api.json.Json;
-import com.jslib.json.JsonImpl;
+import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 
 /**
  * Translate document sources from English to Romanian using OpenAI chat completions API. API key is read from
@@ -156,13 +156,13 @@ public class Translator {
 		private final HttpClient httpClient;
 		private final String apiKey;
 		private final String model;
-		private final Json json;
+		private final Gson json;
 
 		OpenAiClient(HttpClient httpClient, String apiKey, String model) {
 			this.httpClient = httpClient;
 			this.apiKey = apiKey;
 			this.model = model;
-			this.json = new JsonImpl();
+			this.json = new Gson();
 		}
 
 		@Override
@@ -171,20 +171,29 @@ public class Translator {
 					.uri(OPENAI_URI) //
 					.header("Content-Type", "application/json") //
 					.header("Authorization", "Bearer " + apiKey) //
-					.POST(HttpRequest.BodyPublishers.ofString(json.stringify(new OpenAiRequest(model, prompt)), UTF_8)) //
+					.POST(HttpRequest.BodyPublishers.ofString(requestBody(json, model, prompt), UTF_8)) //
 					.build();
 
 			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(UTF_8));
 			return content(json, response.statusCode(), response.body());
 		}
 
+		static String requestBody(Gson json, String model, String prompt) {
+			return json.toJson(new OpenAiRequest(model, prompt));
+		}
+
 		/** Extract completion content from response or throw exception if request failed or response is truncated. */
-		static String content(Json json, int statusCode, String body) throws IOException {
+		static String content(Gson json, int statusCode, String body) throws IOException {
 			if (statusCode != 200) {
 				throw new IOException(String.format("OpenAI request failed with HTTP status %d: %s", statusCode, errorMessage(json, body)));
 			}
 
-			OpenAiResponse response = json.parse(body, OpenAiResponse.class);
+			OpenAiResponse response;
+			try {
+				response = json.fromJson(body, OpenAiResponse.class);
+			} catch (JsonParseException e) {
+				throw new IOException("Invalid OpenAI response: " + e.getMessage(), e);
+			}
 			if (response == null || response.choices == null || response.choices.length == 0 || response.choices[0].message == null) {
 				throw new IOException("OpenAI response has no completion: " + body);
 			}
@@ -198,9 +207,9 @@ public class Translator {
 			return choice.message.content;
 		}
 
-		private static String errorMessage(Json json, String body) {
+		private static String errorMessage(Gson json, String body) {
 			try {
-				OpenAiError error = json.parse(body, OpenAiError.class);
+				OpenAiError error = json.fromJson(body, OpenAiError.class);
 				if (error != null && error.error != null && error.error.message != null) {
 					return error.error.message;
 				}

@@ -13,11 +13,10 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.jslib.api.json.Json;
-import com.jslib.json.JsonImpl;
+import com.google.gson.Gson;
 
 public class TranslatorTest {
-	private final Json json = new JsonImpl();
+	private final Gson json = new Gson();
 
 	@Test
 	public void GivenRelativeAndDottedPaths_WhenI18n_ThenInsertLanguageBeforeExtension() {
@@ -83,6 +82,24 @@ public class TranslatorTest {
 	public void GivenNonJsonErrorResponse_WhenContent_ThenThrowWithBody() {
 		IOException exception = assertThrows(() -> Translator.OpenAiClient.content(json, 502, "<html>Bad Gateway</html>"));
 		assertThat(exception.getMessage(), equalTo("OpenAI request failed with HTTP status 502: <html>Bad Gateway</html>"));
+	}
+
+	@Test
+	public void GivenPrompt_WhenRequestBody_ThenSerializeChatCompletionRequest() {
+		// when
+		String body = Translator.OpenAiClient.requestBody(json, "gpt-test", "Translate \"ăâ\"\nnow");
+
+		// then
+		assertThat(body, equalTo("{\"messages\":[" //
+				+ "{\"role\":\"system\",\"content\":\"You are a helpful assistant that translates formatted text. For Java properties file please preserve original keys.\"}," //
+				+ "{\"role\":\"user\",\"content\":\"Translate \\\"ăâ\\\"\\nnow\"}]," //
+				+ "\"max_tokens\":2400,\"n\":1,\"temperature\":0.5,\"model\":\"gpt-test\"}"));
+	}
+
+	@Test
+	public void GivenMalformedSuccessResponse_WhenContent_ThenThrow() {
+		IOException exception = assertThrows(() -> Translator.OpenAiClient.content(json, 200, "{\"choices\":[{"));
+		assertThat(exception.getMessage(), containsString("Invalid OpenAI response"));
 	}
 
 	@Test
