@@ -8,12 +8,14 @@ public class ProjectProperties {
 	}
 
 	public final String sourceDir;
+	public final String[] languages;
 	public final String fileName;
 	public final boolean imageShadow;
 	public final boolean linkEnabled;
 
 	public ProjectProperties(Properties properties) {
-		this.sourceDir = property(properties, "source.dir", null);
+		this.sourceDir = property(properties, "source.dir", (String) null);
+		this.languages = property(properties, "languages", new String[] {});
 		this.fileName = property(properties, "file.name", "document");
 		this.imageShadow = property(properties, "image.shadow", false);
 		this.linkEnabled = property(properties, "link.enabled", false);
@@ -27,5 +29,10 @@ public class ProjectProperties {
 	private static boolean property(Properties properties, String propertyName, boolean defaultValue) {
 		String value = properties.getProperty(propertyName);
 		return value != null ? Boolean.parseBoolean(value) : defaultValue;
+	}
+
+	private static String[] property(Properties properties, String propertyName, String[] defaultValue) {
+		String value = properties.getProperty(propertyName);
+		return value != null ? value.split("\\s*,\\s*") : defaultValue;
 	}
 }

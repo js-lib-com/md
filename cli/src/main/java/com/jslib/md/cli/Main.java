@@ -10,7 +10,7 @@ import com.jslib.md.docx.DocxGenerator;
 import com.jslib.md.xlsx.XlsxGenerator;
 
 public class Main {
-	private static final String HELP = "md --docx | --xlsx [document-dir] [language]";
+	private static final String HELP = "md --docx | --xlsx [document-dir]";
 
 	private static final Map<Command, CommandHandler> OPERATORS = new HashMap<>();
 	static {
@@ -19,7 +19,7 @@ public class Main {
 	}
 
 	public static void main(String... args) throws Exception {
-		if (args.length < 1 || args.length > 3) {
+		if (args.length < 1 || args.length > 2) {
 			System.err.println(HELP);
 			return;
 		}
@@ -29,7 +29,6 @@ public class Main {
 			return;
 		}
 		File documentDir = new File(args.length >= 2 ? args[1] : ".");
-		String language = args.length == 3 ? args[2] : null;
-		OPERATORS.get(command).execute(documentDir, language);
+		OPERATORS.get(command).execute(documentDir);
 	}
 }

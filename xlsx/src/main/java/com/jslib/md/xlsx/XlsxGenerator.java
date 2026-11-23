@@ -36,10 +36,9 @@ public class XlsxGenerator implements CommandHandler {
 	}
 
 	@Override
-	public void execute(File documentDir, String language) throws Exception {
-		log.trace("execute(File documentDir, String language)");
+	public void execute(File documentDir) throws Exception {
+		log.trace("execute(File documentDir)");
 		assert documentDir != null : "Document directory argument is null";
-		assert language == null : "Language is not used in current implementation";
 
 		File projectPropertiesFile = new File(documentDir, PROPJECT_PROPERTIES);
 		Properties properties = new Properties();

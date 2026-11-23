@@ -18,15 +18,23 @@ import java.util.Properties;
 import org.commonmark.Extension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.parser.Parser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CommandHandler;
 import com.jslib.md.docx.template.DocxTemplate;
 
 public class DocxGenerator implements CommandHandler {
+	private static final Logger log = LoggerFactory.getLogger(DocxGenerator.class);
+
 	private static final String PROPJECT_PROPERTIES = "project.properties";
 
+	private ProjectProperties projectProperties;
+
 	@Override
-	public void execute(File documentDir, String language) throws Exception {
+	public void execute(File documentDir) throws Exception {
+		log.trace("execute(File documentDir)");
+
 		File projectPropertiesFile = new File(documentDir, PROPJECT_PROPERTIES);
 		Properties properties = new Properties();
 		if (projectPropertiesFile.exists()) {
@@ -35,10 +43,19 @@ public class DocxGenerator implements CommandHandler {
 				properties.load(reader);
 			}
 		}
-		ProjectProperties projectProperties = new ProjectProperties(properties);
+		projectProperties = new ProjectProperties(properties);
+
+		execute(documentDir, null);
+		for (String language : projectProperties.languages) {
+			execute(documentDir, language);
+		}
+	}
+
+	private void execute(File documentDir, String language) throws Exception {
+		log.trace("execute(File documentDir, String language)");
 
 		String targetFileName = projectProperties.fileName + ".docx";
-		
+
 		File documentPropertiesFile = new File(documentDir, "document.properties");
 		if (!documentPropertiesFile.exists()) {
 			System.out.printf("Missing document properties file %s .\r\n", documentPropertiesFile);
@@ -54,11 +71,11 @@ public class DocxGenerator implements CommandHandler {
 			targetFileName = String.format("%s_%s.docx", projectProperties.fileName, language);
 
 			File languageDocumentPropertiesFile = new File(documentDir, String.format("document_%s.properties", language));
-			if(languageDocumentPropertiesFile.exists()) {
+			if (languageDocumentPropertiesFile.exists()) {
 				documentPropertiesFile = languageDocumentPropertiesFile;
 			}
 			File languageRevisionsFile = new File(documentDir, String.format("revisions_%s.md", language));
-			if(languageRevisionsFile.exists()) {
+			if (languageRevisionsFile.exists()) {
 				revisionsFile = languageRevisionsFile;
 			}
 		}
