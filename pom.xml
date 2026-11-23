@@ -19,6 +19,7 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<poi.version>5.2.3</poi.version>
 		<commonmark.version>0.20.0</commonmark.version>
+		<slf4j.version>2.0.17</slf4j.version>
    	</properties>
 
 	<dependencyManagement>
@@ -81,7 +82,7 @@
 	        <dependency>
 	            <groupId>org.slf4j</groupId>
 	            <artifactId>slf4j-api</artifactId>
-	            <version>2.0.12</version>
+	            <version>${slf4j.version}</version>
 	        </dependency>
 
 			<dependency>
@@ -105,7 +106,7 @@
 		    <dependency>
 		        <groupId>org.slf4j</groupId>
 		        <artifactId>slf4j-simple</artifactId>
-		        <version>2.0.17</version>
+		        <version>${slf4j.version}</version>
 		        <scope>test</scope>
 		    </dependency>
 			<dependency>

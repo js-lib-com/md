@@ -1,0 +1,36 @@
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.2.0 https://maven.apache.org/xsd/assembly-2.2.0.xsd">
+	<!-- command line distribution: bin with launch scripts, conf on class path and lib with all runtime jars -->
+	<id>dist</id>
+	<formats>
+		<format>dir</format>
+	</formats>
+	<includeBaseDirectory>false</includeBaseDirectory>
+
+	<fileSets>
+		<fileSet>
+			<directory>src/dist/bin</directory>
+			<outputDirectory>bin</outputDirectory>
+			<lineEnding>crlf</lineEnding>
+		</fileSet>
+		<fileSet>
+			<directory>src/dist/conf</directory>
+			<outputDirectory>conf</outputDirectory>
+		</fileSet>
+		<fileSet>
+			<directory>src/dist</directory>
+			<outputDirectory></outputDirectory>
+			<includes>
+				<include>README.txt</include>
+			</includes>
+			<lineEnding>crlf</lineEnding>
+		</fileSet>
+	</fileSets>
+
+	<dependencySets>
+		<dependencySet>
+			<outputDirectory>lib</outputDirectory>
+			<useProjectArtifact>true</useProjectArtifact>
+			<scope>runtime</scope>
+		</dependencySet>
+	</dependencySets>
+</assembly>
