@@ -44,8 +44,13 @@ final class CellContent extends AbstractVisitor {
 			this.link = link;
 		}
 
+		/** Segment needs no font of its own; highlight is not a font format but is applied on cell. */
 		boolean isPlain() {
-			return formats.isEmpty() && !link;
+			return !link && formats.stream().allMatch(format -> format == Format.HIGHLIGHT);
+		}
+
+		boolean isHighlighted() {
+			return formats.contains(Format.HIGHLIGHT);
 		}
 	}
 
@@ -77,6 +82,11 @@ final class CellContent extends AbstractVisitor {
 
 	boolean isFormatted() {
 		return segments.stream().anyMatch(segment -> !segment.isPlain());
+	}
+
+	/** True if any part of cell text is highlighted. */
+	boolean isHighlighted() {
+		return segments.stream().anyMatch(Segment::isHighlighted);
 	}
 
 	@Override

@@ -12,7 +12,9 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.xssf.usermodel.XSSFCell;
@@ -117,6 +119,49 @@ public class XlsxInlineFormattingTest {
 		XSSFFont font = cell.getRichStringCellValue().getFontOfFormattingRun(0);
 		assertThat(font.getBold(), equalTo(true));
 		assertThat(font.getColor(), equalTo(IndexedColors.WHITE.getIndex()));
+	}
+
+	@Test
+	public void GivenPartlyHighlightedText_WhenExecute_ThenFillCellAndKeepTextPlain() throws Exception {
+		// when
+		XSSFCell cell = cell("note: <mark>important</mark> text");
+
+		// then
+		assertThat(cell.getStringCellValue(), equalTo("note: important text"));
+		assertThat(runs(cell), equalTo("[note: important text]"));
+		assertThat(cell.getCellStyle().getFillPattern(), equalTo(FillPatternType.SOLID_FOREGROUND));
+		assertThat(cell.getCellStyle().getFillForegroundColor(), equalTo(IndexedColors.YELLOW.getIndex()));
+		assertThat(cell.getCellStyle().getBorderBottom(), equalTo(BorderStyle.THIN));
+	}
+
+	@Test
+	public void GivenHighlightedBoldTextWithLineBreak_WhenExecute_ThenFillWrapAndKeepBold() throws Exception {
+		// when
+		XSSFCell cell = cell("<mark><b>bold</b><br>line</mark>");
+
+		// then
+		assertThat(runs(cell), equalTo("[bold]b|[\nline]"));
+		assertThat(cell.getCellStyle().getFillForegroundColor(), equalTo(IndexedColors.YELLOW.getIndex()));
+		assertThat(cell.getCellStyle().getWrapText(), equalTo(true));
+	}
+
+	@Test
+	public void GivenHighlightedHeaderCell_WhenExecute_ThenKeepHeaderFill() throws Exception {
+		// when
+		writeTable("|<mark>Name</mark>|Value|\n|-|-|\n|a|1|\n");
+		XSSFCell cell = sheet().getRow(0).getCell(0);
+
+		// then
+		assertThat(cell.getCellStyle().getFillForegroundColor(), equalTo(IndexedColors.TEAL.getIndex()));
+	}
+
+	@Test
+	public void GivenNotHighlightedCell_WhenExecute_ThenDoNotFill() throws Exception {
+		// when
+		XSSFCell cell = cell("plain <b>bold</b>");
+
+		// then
+		assertThat(cell.getCellStyle().getFillPattern(), equalTo(FillPatternType.NO_FILL));
 	}
 
 	@Test

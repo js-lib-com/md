@@ -2,6 +2,7 @@ package com.jslib.md.xlsx;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
@@ -119,7 +120,9 @@ public class XlsxVisitor extends CustomVisitor {
 
 		// line breaks are visible only if cell text is wrapped
 		boolean wrap = text.indexOf('\n') != -1;
-		xlsxCell.setCellStyle(header ? (wrap ? wrapped(xlsxHeaderStyle) : xlsxHeaderStyle) : (wrap ? wrapped(xlsxCellStyle) : xlsxCellStyle));
+		// Excel cannot highlight part of a cell text so the whole cell is filled; header keeps its own fill for readability
+		boolean highlight = content.isHighlighted() && !header;
+		xlsxCell.setCellStyle(style(header ? xlsxHeaderStyle : xlsxCellStyle, wrap, highlight));
 
 		if (content.linkDestination() != null) {
 			hyperlink(xlsxCell, content.linkDestination());
@@ -144,10 +147,8 @@ public class XlsxVisitor extends CustomVisitor {
 	private final Map<String, Font> fonts = new HashMap<>();
 
 	private Font font(CellContent.Segment segment, boolean header) {
-		if (segment.formats.contains(Format.HIGHLIGHT)) {
-			log.debug("Highlight is not supported on XLSX cell text segments.");
-		}
-		String key = header + ":" + segment.link + ":" + segment.formats;
+		// highlight does not change the font so it is not part of the key
+		String key = header + ":" + segment.link + ":" + segment.formats.stream().filter(format -> format != Format.HIGHLIGHT).collect(Collectors.toList());
 		return fonts.computeIfAbsent(key, k -> {
 			Font font = sheet.getWorkbook().createFont();
 			if (header) {
@@ -180,14 +181,25 @@ public class XlsxVisitor extends CustomVisitor {
 		});
 	}
 
-	private final Map<CellStyle, CellStyle> wrappedStyles = new HashMap<>();
+	private final Map<String, CellStyle> styleVariants = new HashMap<>();
 
-	private CellStyle wrapped(CellStyle style) {
-		return wrappedStyles.computeIfAbsent(style, s -> {
-			CellStyle wrapped = sheet.getWorkbook().createCellStyle();
-			wrapped.cloneStyleFrom(s);
-			wrapped.setWrapText(true);
-			return wrapped;
+	/** Base cell style variant with text wrapping and / or highlight fill; created once and reused. */
+	private CellStyle style(CellStyle base, boolean wrap, boolean highlight) {
+		if (!wrap && !highlight) {
+			return base;
+		}
+		String key = base.getIndex() + ":" + wrap + ":" + highlight;
+		return styleVariants.computeIfAbsent(key, k -> {
+			CellStyle style = sheet.getWorkbook().createCellStyle();
+			style.cloneStyleFrom(base);
+			if (wrap) {
+				style.setWrapText(true);
+			}
+			if (highlight) {
+				style.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+				style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+			}
+			return style;
 		});
 	}
 
