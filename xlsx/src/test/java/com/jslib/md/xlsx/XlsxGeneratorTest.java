@@ -17,10 +17,9 @@ public class XlsxGeneratorTest {
 	public void Given_WhenGeneratorExecute_Then() throws Exception {
 		// GIVEN
 		File documentDir = new File("src/test/resources/xlsx");
-		String language = null;
 
 		// WHEN
-		generator.execute(documentDir, language);
+		generator.execute(documentDir);
 
 		// THEN
 	}
