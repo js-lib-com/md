@@ -26,10 +26,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.im4java</groupId>
-			<artifactId>im4java</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>net.coobird</groupId>
 			<artifactId>thumbnailator</artifactId>
 		</dependency>
