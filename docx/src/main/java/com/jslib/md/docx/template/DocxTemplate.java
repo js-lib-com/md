@@ -27,7 +27,7 @@ public class DocxTemplate {
 	private static final Logger log = LoggerFactory.getLogger(DocxTemplate.class);
 
 	private static final String TEMPLATE_RESOURCE = "/template.docx";
-	private static final Pattern VARIABLE = Pattern.compile("\\{\\{([^{}]+)\\}\\}");
+	private static final Pattern VARIABLE = Pattern.compile("\\{\\{([^{}]+)}}");
 
 	private final byte[] document;
 

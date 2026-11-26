@@ -1,6 +1,6 @@
 Usage: mdt docx [options] [document-dir]
 
-Generate Word documents (.docx) from markdown sources, one per language.
+Generate Word documents (.docx) from Markdown sources, one per language.
 
 Document directory files:
   document.properties    Template variables, e.g. document.title, document.author

@@ -1,7 +1,7 @@
 Markdown tools
 ==============
 
-Generate Word documents and Excel workbooks from markdown sources.
+Generate Word documents and Excel workbooks from Markdown sources.
 
 Layout
   bin\mdt.bat   command line launcher

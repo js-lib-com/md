@@ -24,9 +24,9 @@ public class TranslatorTest {
 
 	@Test
 	public void GivenRelativeAndDottedPaths_WhenI18n_ThenInsertLanguageBeforeExtension() {
-		assertThat(Translator.i18n(Path.of("./document.md"), "ro"), equalTo(Path.of("./document_ro.md")));
-		assertThat(Translator.i18n(Path.of("work.v1/revisions.md"), "ro"), equalTo(Path.of("work.v1/revisions_ro.md")));
-		assertThat(Translator.i18n(Path.of("document.properties"), "ro"), equalTo(Path.of("document_ro.properties")));
+		assertThat(Translator.i18n(Path.of("./document.md")), equalTo(Path.of("./document_ro.md")));
+		assertThat(Translator.i18n(Path.of("work.v1/revisions.md")), equalTo(Path.of("work.v1/revisions_ro.md")));
+		assertThat(Translator.i18n(Path.of("document.properties")), equalTo(Path.of("document_ro.properties")));
 	}
 
 	@Test
@@ -58,7 +58,7 @@ public class TranslatorTest {
 		}, 4);
 
 		// when
-		String translation = translator.translate(paragraph + "\r\n\r\nshort\r\n", "markdown", "English", "Romanian");
+		String translation = translator.translate(paragraph + "\r\n\r\nshort\r\n", "markdown");
 
 		// then
 		assertThat(prompts, hasSize(2));
@@ -72,7 +72,7 @@ public class TranslatorTest {
 		Translator translator = new Translator(prompt -> "| a |\n\\\\| b |\n/ - c\n", 1);
 
 		// when
-		String translation = translator.translate("| A |\r\n| B |\r\n- C\r\n", "markdown", "English", "Romanian");
+		String translation = translator.translate("| A |\r\n| B |\r\n- C\r\n", "markdown");
 
 		// then
 		assertThat(translation, equalTo("| a |\r\n| b |\r\n- c\r\n"));
@@ -85,7 +85,7 @@ public class TranslatorTest {
 		Translator translator = new Translator(prompt -> calls.incrementAndGet() == 1 ? "| a |" : "| a |\n| b |", 1);
 
 		// when
-		String translation = translator.translate("| A |\n| B |", "markdown", "English", "Romanian");
+		String translation = translator.translate("| A |\n| B |", "markdown");
 
 		// then
 		assertThat(calls.get(), equalTo(2));
@@ -99,7 +99,7 @@ public class TranslatorTest {
 		Translator translator = new Translator(prompt -> "attempt " + calls.incrementAndGet(), 1);
 
 		// when
-		String translation = translator.translate("# Title", "markdown", "English", "Romanian");
+		String translation = translator.translate("# Title", "markdown");
 
 		// then
 		assertThat(calls.get(), equalTo(Translator.STRUCTURE_ATTEMPTS));
@@ -139,7 +139,7 @@ public class TranslatorTest {
 		}, 3);
 
 		// when
-		String translation = translator.translate(text.toString(), "markdown", "English", "Romanian");
+		String translation = translator.translate(text.toString(), "markdown");
 
 		// then
 		assertThat(translation, equalTo("t0\n\nt1\n\nt2\n\nt3\n\nt4\n\nt5\n\nt6\n\nt7\n"));
@@ -160,7 +160,7 @@ public class TranslatorTest {
 		// when
 		IOException exception = assertThrows(() -> {
 			try {
-				translator.translate(text, "markdown", "English", "Romanian");
+				translator.translate(text, "markdown");
 			} catch (InterruptedException e) {
 				throw new AssertionError(e);
 			}

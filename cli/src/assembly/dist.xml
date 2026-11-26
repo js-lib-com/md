@@ -18,7 +18,7 @@
 		</fileSet>
 		<fileSet>
 			<directory>src/dist</directory>
-			<outputDirectory></outputDirectory>
+			<outputDirectory/>
 			<includes>
 				<include>README.txt</include>
 			</includes>

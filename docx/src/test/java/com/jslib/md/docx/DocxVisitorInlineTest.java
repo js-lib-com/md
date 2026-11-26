@@ -4,7 +4,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -115,7 +114,7 @@ public class DocxVisitorInlineTest {
 
 		// then
 		assertThat(paragraph.getText(), equalTo("a  b  c"));
-		assertThat(format(paragraph).replaceAll("[^\\]|]+\\]", ""), equalTo("||||"));
+		assertThat(format(paragraph).replaceAll("[^]|]+]", ""), equalTo("||||"));
 	}
 
 	private static String format(XWPFParagraph paragraph) {
@@ -123,20 +122,18 @@ public class DocxVisitorInlineTest {
 	}
 
 	private static String format(XWPFRun run) {
-		StringBuilder format = new StringBuilder("[" + run.text() + "]");
-		format.append(run.isItalic() ? "i" : "").append(run.isBold() ? "b" : "");
-		format.append(run.getUnderline() != UnderlinePatterns.NONE ? "u" : "").append(run.isStrikeThrough() ? "s" : "");
-		format.append(DocxStyles.getQuoteCharStyleId().equals(run.getStyle()) ? "c" : "");
-		format.append(run.getVerticalAlignment() == STVerticalAlignRun.SUPERSCRIPT ? "^" : "");
-		format.append(run.getVerticalAlignment() == STVerticalAlignRun.SUBSCRIPT ? "_" : "");
-		format.append(run.isHighlighted() ? "h" : "");
-		return format.toString();
+        return "[" + run.text() + "]" + (run.isItalic() ? "i" : "") + (run.isBold() ? "b" : "") +
+                (run.getUnderline() != UnderlinePatterns.NONE ? "u" : "") + (run.isStrikeThrough() ? "s" : "") +
+                (DocxStyles.getQuoteCharStyleId().equals(run.getStyle()) ? "c" : "") +
+                (run.getVerticalAlignment() == STVerticalAlignRun.SUPERSCRIPT ? "^" : "") +
+                (run.getVerticalAlignment() == STVerticalAlignRun.SUBSCRIPT ? "_" : "") +
+                (run.isHighlighted() ? "h" : "");
 	}
 
 	private static XWPFParagraph lastParagraph(String markdown) throws IOException, XmlException {
 		XWPFDocument document = new XWPFDocument(new DocxTemplate(new Properties()).getInputStream());
 		DocxVisitor visitor = new DocxVisitor(document, ProjectProperties.empty());
-		Parser.builder().extensions(Arrays.asList(TablesExtension.create())).build().parse(markdown).accept(visitor);
+		Parser.builder().extensions(List.of(TablesExtension.create())).build().parse(markdown).accept(visitor);
 		List<XWPFParagraph> paragraphs = document.getParagraphs();
 		return paragraphs.get(paragraphs.size() - 1);
 	}

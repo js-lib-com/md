@@ -3,7 +3,7 @@ package com.jslib.md.docx;
 import java.util.Properties;
 
 public class ProjectProperties {
-	public static final ProjectProperties empty() {
+	public static ProjectProperties empty() {
 		return new ProjectProperties(new Properties());
 	}
 
@@ -20,14 +20,14 @@ public class ProjectProperties {
 	public final int tableColumnOutliers;
 
 	public ProjectProperties(Properties properties) {
-		this.sourceDir = property(properties, "source.dir", (String) null);
-		this.languages = property(properties, "languages", new String[] {});
+		this.sourceDir = property(properties, "source.dir", null);
+		this.languages = property(properties, new String[] {});
 		this.fileName = property(properties, "file.name", "document");
-		this.imageShadow = property(properties, "image.shadow", false);
-		this.linkEnabled = property(properties, "link.enabled", false);
-		this.tableAutoFit = property(properties, "table.auto.fit", false);
-		this.tableColumnMinWidth = property(properties, "table.column.min.width", 10, 0, 100);
-		this.tableColumnOutliers = property(properties, "table.column.outliers", 20, 0, 50);
+		this.imageShadow = property(properties, "image.shadow");
+		this.linkEnabled = property(properties, "link.enabled");
+		this.tableAutoFit = property(properties, "table.auto.fit");
+		this.tableColumnMinWidth = property(properties, "table.column.min.width", 10, 100);
+		this.tableColumnOutliers = property(properties, "table.column.outliers", 20, 50);
 	}
 
 	private static String property(Properties properties, String propertyName, String defaultValue) {
@@ -35,29 +35,29 @@ public class ProjectProperties {
 		return value != null ? value : defaultValue;
 	}
 
-	private static boolean property(Properties properties, String propertyName, boolean defaultValue) {
+	private static boolean property(Properties properties, String propertyName) {
 		String value = properties.getProperty(propertyName);
-		return value != null ? Boolean.parseBoolean(value) : defaultValue;
+		return Boolean.parseBoolean(value);
 	}
 
-	private static int property(Properties properties, String propertyName, int defaultValue, int min, int max) {
+	private static int property(Properties properties, String propertyName, int defaultValue, int max) {
 		String value = properties.getProperty(propertyName);
 		if (value == null) {
 			return defaultValue;
 		}
 		try {
 			int number = Integer.parseInt(value.strip());
-			if (number >= min && number <= max) {
+			if (number >= 0 && number <= max) {
 				return number;
 			}
 		} catch (NumberFormatException e) {
 			// fall through invalid property exception
 		}
-		throw new IllegalArgumentException(String.format("Invalid project property %s=%s. Expected integer from %d to %d.", propertyName, value, min, max));
+		throw new IllegalArgumentException(String.format("Invalid project property %s=%s. Expected integer from %d to %d.", propertyName, value, 0, max));
 	}
 
-	private static String[] property(Properties properties, String propertyName, String[] defaultValue) {
-		String value = properties.getProperty(propertyName);
+	private static String[] property(Properties properties, String[] defaultValue) {
+		String value = properties.getProperty("languages");
 		return value != null ? value.split("\\s*,\\s*") : defaultValue;
 	}
 }

@@ -31,23 +31,22 @@ import com.jslib.md.TableColumns;
 public class XlsxGenerator implements CommandHandler {
 	private static final Logger log = LoggerFactory.getLogger(XlsxGenerator.class);
 
-	private static final String PROPJECT_PROPERTIES = "project.properties";
+	private static final String PROJECT_PROPERTIES = "project.properties";
 
 	private final Parser parser;
 
 	public XlsxGenerator() {
 		log.trace("XlsxGenerator()");
 
-		List<Extension> extensions = Arrays.asList(TablesExtension.create());
+		List<Extension> extensions = List.of(TablesExtension.create());
 		this.parser = Parser.builder().extensions(extensions).build();
 	}
 
 	@Override
 	public void execute(File documentDir) throws Exception {
 		log.trace("execute(File documentDir)");
-		assert documentDir != null : "Document directory argument is null";
 
-		File projectPropertiesFile = new File(documentDir, PROPJECT_PROPERTIES);
+		File projectPropertiesFile = new File(documentDir, PROJECT_PROPERTIES);
 		Properties properties = new Properties();
 		if (projectPropertiesFile.exists()) {
 			// project properties is optional in which case defaults apply
@@ -134,7 +133,7 @@ public class XlsxGenerator implements CommandHandler {
 	static String sheetName(Workbook workbook, String baseName) {
 		String safeName = WorkbookUtil.createSafeSheetName(baseName, '_');
 		String name = safeName;
-		// sheet names are case insensitive and so is workbook sheet lookup
+		// sheet names are case-insensitive and so is workbook sheet lookup
 		for (int index = 2; workbook.getSheet(name) != null; ++index) {
 			String suffix = " (" + index + ")";
 			name = safeName.substring(0, Math.min(safeName.length(), MAX_SHEET_NAME_LENGTH - suffix.length())) + suffix;

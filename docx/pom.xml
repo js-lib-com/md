@@ -32,7 +32,7 @@
 	</dependencies>
 
 	<build>
-		<finalName>md-docx-${revision}</finalName>
+		<finalName>md-docx-${project.parent.version}</finalName>
 	</build>
 
 </project>

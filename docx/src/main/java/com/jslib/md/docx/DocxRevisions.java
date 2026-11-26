@@ -17,7 +17,7 @@ import com.jslib.md.CustomVisitor;
 import com.jslib.md.PlainText;
 
 /**
- * Copy revisions markdown table body rows into document template revisions table, that is the second table from
+ * Copy revisions Markdown table body rows into document template revisions table, that is the second table from
  * template. Cell content is copied as plain text, whatever inline formatting it has.
  */
 public class DocxRevisions extends CustomVisitor {

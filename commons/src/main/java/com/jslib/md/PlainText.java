@@ -8,7 +8,7 @@ import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.Text;
 
 /**
- * Plain text content of a markdown node, that is, the concatenation of all descendant text and inline code literals,
+ * Plain text content of a Markdown node, that is, the concatenation of all descendant text and inline code literals,
  * whatever inline formatting. Line breaks are rendered as spaces and leading and trailing white spaces are removed.
  */
 public final class PlainText extends AbstractVisitor {

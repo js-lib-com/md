@@ -99,6 +99,6 @@ public class TableColumnsTest {
 
 	@Test
 	public void GivenEmptyColumns_WhenWidths_ThenEqualWidths() {
-		assertThat(TableColumns.widths(Arrays.asList(Arrays.asList("", "")), 10, 20), equalTo(new int[] { 2500, 2500 }));
+		assertThat(TableColumns.widths(List.of(Arrays.asList("", "")), 10, 20), equalTo(new int[] { 2500, 2500 }));
 	}
 }

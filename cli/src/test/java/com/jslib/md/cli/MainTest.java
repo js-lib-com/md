@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.util.Objects;
 
 import org.junit.After;
 import org.junit.Before;
@@ -31,8 +32,9 @@ public class MainTest {
 	}
 
 	@After
+	@SuppressWarnings("ResultOfMethodCallIgnored")
 	public void afterTest() {
-		for (File file : dir.listFiles()) {
+		for (File file : Objects.requireNonNull(dir.listFiles())) {
 			file.delete();
 		}
 		dir.delete();

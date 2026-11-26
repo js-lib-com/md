@@ -24,6 +24,7 @@ public class ArgumentsTest {
 	}
 
 	@After
+	@SuppressWarnings("ResultOfMethodCallIgnored")
 	public void afterTest() {
 		dir.delete();
 	}

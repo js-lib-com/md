@@ -18,13 +18,13 @@ In current implementation, Call Radar users authenticate themselves with SN cred
 
 ![Login Form](login-form.png)
  
-Into login form user should enter only its user name, without any suffix. For example, irotaru but not irotaru@eonsn.ro .
+Into login form user should enter only its username, without any suffix. For example, irotaru but not irotaru@eonsn.ro .
 
 If credentials are not accepted there is no feedback on user login form in order to minimize chances of guessing.
 
 After successful login, application is loaded from server and started. On bad password, login form is displayed again; retries count is limited according Active Directory policy. 
 
-If fail to login multiple times is possible to have account problems and need to contact Active Directory administrator.
+If fail to log in multiple times is possible to have account problems and need to contact Active Directory administrator.
  
 # User Interface
 
@@ -32,15 +32,15 @@ Current application version has only one page that is opened after successful lo
 
 On application start or browser page reload, calls map are loaded from server database, then application is waiting for customers to call emergency contact center. When a call arrives, server back-end is informed by contact center and a call event is pushed to browser.
 
-A call has a life cycle that last for 24 hours. Currently there are four phases; the color of the call interaction icon is changed when call changes its state.
+A call has a life cycle that last for 24 hours. Currently, there are four phases; the color of the call interaction icon is changed when call changes its state.
 
-| Color  | Description |
-|--------|-------------|
-| Green  | Call is less than 2 hours old. |
-| Blue	 | Call is between 2 and 14 hours. |
-| Red	 | Call is between 14 and 22 hours. |
-| Black	 | Call is in its last 2 hours before removing from user interface. |
-| Purple | Ticket created on delivery point attached to call. |
+| Color  | Description                                                                                                                |
+|--------|----------------------------------------------------------------------------------------------------------------------------|
+| Green  | Call is less than 2 hours old.                                                                                             |
+| Blue   | Call is between 2 and 14 hours.                                                                                            |
+| Red    | Call is between 14 and 22 hours.                                                                                           |
+| Black  | Call is in its last 2 hours before removing from user interface.                                                           |
+| Purple | Ticket created on delivery point attached to call.                                                                         |
 | Yellow | Ticket solved; removed from user interface after 2 hours. Call is in its last 2 hours before removing from user interface. |
 
 After call interaction life cycle completes, its icon is removed from call interactions map. Also call interaction is removed from map when OMS declares ticket solved. Once a call interaction removed it can be displayed only using time period selection from main menu.
@@ -69,7 +69,7 @@ There are four action icons:
 Depending on the selected time period size, call interactions loading may take some times. While loading is in progress both map and logs are updated on the fly. 
 
 ## Call Interactions Map
-Call interactions map is based on Open Street Maps and a call interaction is displayed as standard balloon marker. Call marker coordinates are loaded from database based on customer phone number. Over the maps there is also a layer with the electrical grid network, loaded from ArcGIS server.
+Call interactions map is based on OpenStreetMap and a call interaction is displayed as standard balloon marker. Call marker coordinates are loaded from database based on customer phone number. Over the maps there is also a layer with the electrical grid network, loaded from ArcGIS server.
 
 Map has controls for zoom level.  Zoom level change can be also performed using the mouse wheel. When zoom level is changed the right side views are updated to display only call interactions that are actually visible on map.
 
@@ -88,7 +88,7 @@ Grid Tree displays electrical elements related to current calls. It is standard 
 
 ![Grid Tree](grid-tree.png) 
 
-If want to expand or collapse all grid elements from hierarchy click on desire node while pressing control key. For example, click + ctrl on collapsed region will expand all substations and all other grid elements from hierarchy.
+If you want to expand or collapse all grid elements from hierarchy click on desire node while pressing control key. For example, click + ctrl on collapsed region will expand all substations and all other grid elements from hierarchy.
 
 ## Filtering
 Filters are used to narrow down the number of call interactions displayed on user interface.

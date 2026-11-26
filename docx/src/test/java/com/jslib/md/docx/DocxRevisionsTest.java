@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -59,7 +58,7 @@ public class DocxRevisionsTest {
 
 	private void generate(String markdown) {
 		DocxRevisions revisions = new DocxRevisions(document);
-		Parser.builder().extensions(Arrays.asList(TablesExtension.create())).build().parse(markdown).accept(revisions);
+		Parser.builder().extensions(List.of(TablesExtension.create())).build().parse(markdown).accept(revisions);
 	}
 
 	private List<String> cells(int rowIndex) {

@@ -10,7 +10,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
@@ -132,7 +131,7 @@ public class DocxTableTest {
 		XWPFDocument document = new XWPFDocument(new DocxTemplate(new Properties()).getInputStream());
 		int tablesCount = document.getTables().size();
 		DocxVisitor visitor = new DocxVisitor(document, new ProjectProperties(properties));
-		Parser.builder().extensions(Arrays.asList(TablesExtension.create())).build().parse(markdown).accept(visitor);
+		Parser.builder().extensions(List.of(TablesExtension.create())).build().parse(markdown).accept(visitor);
 
 		// save and reload to check widths survive serialization
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();

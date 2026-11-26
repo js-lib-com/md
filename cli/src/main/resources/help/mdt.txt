@@ -1,10 +1,10 @@
 Usage: mdt <command> [options] [document-dir]
 
-Generate documents from markdown sources.
+Generate documents from Markdown sources.
 
 Commands:
-  docx        Generate Word documents (.docx) from markdown sources
-  xlsx        Generate an Excel workbook (.xlsx) from markdown tables
+  docx        Generate Word documents (.docx) from Markdown sources
+  xlsx        Generate an Excel workbook (.xlsx) from Markdown tables
   translate   Translate document sources from English to Romanian using OpenAI
 
 Arguments:

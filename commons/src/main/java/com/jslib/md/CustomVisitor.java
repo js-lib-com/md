@@ -12,14 +12,11 @@ import org.commonmark.node.CustomNode;
 public abstract class CustomVisitor extends AbstractVisitor {
 	@Override
 	public void visit(CustomBlock customBlock) {
-		switch (customBlock.getClass().getSimpleName()) {
-		case "TableBlock":
-			visit((TableBlock) customBlock);
-			break;
-
-		default:
-			super.visit(customBlock);
-		}
+        if (customBlock.getClass().getSimpleName().equals("TableBlock")) {
+            visit((TableBlock) customBlock);
+        } else {
+            super.visit(customBlock);
+        }
 	}
 
 	@Override

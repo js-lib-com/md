@@ -21,8 +21,8 @@ import com.jslib.md.InlineHtml;
 import com.jslib.md.InlineHtml.Format;
 
 /**
- * Content of a markdown table cell as text segments with formatting from markdown emphasis, inline code, links and
- * inline HTML. Leading and trailing white spaces are removed. Line breaks, both markdown hard breaks and HTML
+ * Content of a Markdown table cell as text segments with formatting from Markdown emphasis, inline code, links and
+ * inline HTML. Leading and trailing white spaces are removed. Line breaks, both Markdown hard breaks and HTML
  * <code>br</code>, are rendered as new line, while source soft breaks as space.
  */
 final class CellContent extends AbstractVisitor {
@@ -46,7 +46,7 @@ final class CellContent extends AbstractVisitor {
 
 		/** Segment needs no font of its own; highlight is not a font format but is applied on cell. */
 		boolean isPlain() {
-			return !link && formats.stream().allMatch(format -> format == Format.HIGHLIGHT);
+			return link || !formats.stream().allMatch(format -> format == Format.HIGHLIGHT);
 		}
 
 		boolean isHighlighted() {
@@ -81,7 +81,7 @@ final class CellContent extends AbstractVisitor {
 	}
 
 	boolean isFormatted() {
-		return segments.stream().anyMatch(segment -> !segment.isPlain());
+		return segments.stream().anyMatch(Segment::isPlain);
 	}
 
 	/** True if any part of cell text is highlighted. */

@@ -20,7 +20,6 @@ public class DocxStyles {
 	private static final String QUOTE_STYLE_ID = "Quote";
 	private static final String QUOTE_CHAR_STYLE_ID = "QuoteChar";
 	private static final String INTENSE_QUOTE_STYLE_ID = "IntenseQuote";
-	private static final String INTENSE_QUOTE_CHAR_STYLE_ID = "IntenseQuoteChar";
 
 	private static final String HEADING1_STYLE_RESOURCE = "/heading1-style.xml";
 	private static final String HEADING2_STYLE_RESOURCE = "/heading2-style.xml";
@@ -69,28 +68,12 @@ public class DocxStyles {
 			// heading 5 and 6 styles are provided by document template
 			return "Heading" + level;
 		default:
-			throw new IllegalStateException("Unsuported level " + level);
+			throw new IllegalStateException("Unsupported level " + level);
 		}
 	}
 
 	public static String getNoSpacing() {
 		return NO_SPACING;
-	}
-
-	public static String getHeading1StyleId() {
-		return HEADING1_STYLE_ID;
-	}
-
-	public static String getHeading2StyleId() {
-		return HEADING2_STYLE_ID;
-	}
-
-	public static String getHeading3StyleId() {
-		return HEADING3_STYLE_ID;
-	}
-
-	public static String getHeading4StyleId() {
-		return HEADING4_STYLE_ID;
 	}
 
 	public static String getListStyleId() {
@@ -105,10 +88,6 @@ public class DocxStyles {
 		return TABLE_STYLE_ID;
 	}
 
-	public static String getQuoteStyleId() {
-		return QUOTE_STYLE_ID;
-	}
-
 	public static String getQuoteCharStyleId() {
 		return QUOTE_CHAR_STYLE_ID;
 	}
@@ -117,7 +96,4 @@ public class DocxStyles {
 		return INTENSE_QUOTE_STYLE_ID;
 	}
 
-	public static String getIntenseQuoteCharStyleId() {
-		return INTENSE_QUOTE_CHAR_STYLE_ID;
-	}
 }

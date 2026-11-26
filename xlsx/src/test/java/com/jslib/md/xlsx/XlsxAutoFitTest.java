@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Objects;
 
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
@@ -30,11 +31,12 @@ public class XlsxAutoFitTest {
 	}
 
 	@After
+	@SuppressWarnings("ResultOfMethodCallIgnored")
 	public void afterTest() throws IOException {
 		if (workbook != null) {
 			workbook.close();
 		}
-		for (File file : documentDir.listFiles()) {
+		for (File file : Objects.requireNonNull(documentDir.listFiles())) {
 			file.delete();
 		}
 		documentDir.delete();

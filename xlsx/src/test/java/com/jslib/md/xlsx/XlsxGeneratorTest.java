@@ -23,12 +23,4 @@ public class XlsxGeneratorTest {
 
 		// THEN
 	}
-
-	public void Given_When_Then() {
-		// GIVEN
-
-		// WHEN
-
-		// THEN
-	}
 }

@@ -93,7 +93,7 @@ public class DocxNumbering {
 	 * Create numbering instance for a new ordered list so that every list restarts its counting.
 	 *
 	 * @param level list nesting level, 0 based.
-	 * @param start list start number as declared in markdown source.
+	 * @param start list start number as declared in Markdown source.
 	 * @return numbering instance ID.
 	 */
 	public BigInteger addOrderedNum(int level, int start) {

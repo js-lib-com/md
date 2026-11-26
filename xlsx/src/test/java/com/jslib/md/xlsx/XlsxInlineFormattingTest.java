@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.CellType;
@@ -36,11 +37,12 @@ public class XlsxInlineFormattingTest {
 	}
 
 	@After
+	@SuppressWarnings("ResultOfMethodCallIgnored")
 	public void afterTest() throws IOException {
 		if (workbook != null) {
 			workbook.close();
 		}
-		for (File file : documentDir.listFiles()) {
+		for (File file : Objects.requireNonNull(documentDir.listFiles())) {
 			file.delete();
 		}
 		documentDir.delete();

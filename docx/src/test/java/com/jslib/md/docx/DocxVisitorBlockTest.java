@@ -199,7 +199,7 @@ public class DocxVisitorBlockTest {
 
 	private List<XWPFParagraph> generate(String markdown) throws IOException, XmlException {
 		DocxVisitor visitor = new DocxVisitor(document, ProjectProperties.empty());
-		Parser.builder().extensions(Arrays.asList(TablesExtension.create())).build().parse(markdown).accept(visitor);
+		Parser.builder().extensions(List.of(TablesExtension.create())).build().parse(markdown).accept(visitor);
 		List<XWPFParagraph> paragraphs = document.getParagraphs();
 		return new ArrayList<>(paragraphs.subList(templateParagraphsCount, paragraphs.size()));
 	}

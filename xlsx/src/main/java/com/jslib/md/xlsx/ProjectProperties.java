@@ -3,9 +3,6 @@ package com.jslib.md.xlsx;
 import java.util.Properties;
 
 public class ProjectProperties {
-	public static final ProjectProperties empty() {
-		return new ProjectProperties(new Properties());
-	}
 
 	public final String sourceDir;
 	public final String fileName;

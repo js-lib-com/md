@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -33,8 +34,9 @@ public class XlsxGeneratorFilesTest {
 	}
 
 	@After
+	@SuppressWarnings("ResultOfMethodCallIgnored")
 	public void afterTest() {
-		for (File file : documentDir.listFiles()) {
+		for (File file : Objects.requireNonNull(documentDir.listFiles())) {
 			file.delete();
 		}
 		documentDir.delete();
@@ -46,11 +48,13 @@ public class XlsxGeneratorFilesTest {
 		write("table.md", "|Name|Description|Note|\n|-|-|-|\n|**Bold** name|See [site](https://x.org) and `code`||\n");
 
 		// when
-		Workbook workbook = execute();
+        Row row;
+        try (Workbook workbook = execute()) {
+            row = workbook.getSheet("table").getRow(1);
+        }
 
 		// then
-		Row row = workbook.getSheet("table").getRow(1);
-		assertThat(row.getCell(0).getStringCellValue(), equalTo("Bold name"));
+        assertThat(row.getCell(0).getStringCellValue(), equalTo("Bold name"));
 		assertThat(row.getCell(1).getStringCellValue(), equalTo("See site and code"));
 		assertThat(row.getCell(2).getCellType(), equalTo(CellType.BLANK));
 	}

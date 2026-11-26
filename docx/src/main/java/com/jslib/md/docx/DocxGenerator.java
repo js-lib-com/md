@@ -28,7 +28,7 @@ import com.jslib.md.docx.template.DocxTemplate;
 public class DocxGenerator implements CommandHandler {
 	private static final Logger log = LoggerFactory.getLogger(DocxGenerator.class);
 
-	private static final String PROPJECT_PROPERTIES = "project.properties";
+	private static final String PROJECT_PROPERTIES = "project.properties";
 
 	private ProjectProperties projectProperties;
 
@@ -36,7 +36,7 @@ public class DocxGenerator implements CommandHandler {
 	public void execute(File documentDir) throws Exception {
 		log.trace("execute(File documentDir)");
 
-		File projectPropertiesFile = new File(documentDir, PROPJECT_PROPERTIES);
+		File projectPropertiesFile = new File(documentDir, PROJECT_PROPERTIES);
 		Properties properties = new Properties();
 		if (projectPropertiesFile.exists()) {
 			// project properties is optional in which case defaults apply
@@ -115,7 +115,7 @@ public class DocxGenerator implements CommandHandler {
 			documentProperties.load(reader);
 		}
 
-		List<Extension> extensions = Arrays.asList(TablesExtension.create());
+		List<Extension> extensions = List.of(TablesExtension.create());
 		Parser parser = Parser.builder().extensions(extensions).build();
 
 		DocxTemplate template = new DocxTemplate(documentProperties);
@@ -126,7 +126,7 @@ public class DocxGenerator implements CommandHandler {
 			parser.parseReader(reader).accept(revisions);
 		}
 
-		try (InputStreamReader reader = new InputStreamReader(new FileInputStream(sourceFile), "UTF-8")) {
+		try (InputStreamReader reader = new InputStreamReader(new FileInputStream(sourceFile), StandardCharsets.UTF_8)) {
 			parser.parseReader(reader).accept(documentVisitor);
 		}
 

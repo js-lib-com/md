@@ -43,10 +43,6 @@ public class XlsxVisitor extends CustomVisitor {
 	private int xlsxRowIndex;
 	private int xlsxCellIndex;
 
-	public XlsxVisitor(Sheet sheet) {
-		this(sheet, false);
-	}
-
 	public XlsxVisitor(Sheet sheet, boolean tableAutoFit) {
 		super();
 		log.trace("XlsxVisitor(Sheet sheet, boolean tableAutoFit)");
@@ -118,7 +114,7 @@ public class XlsxVisitor extends CustomVisitor {
 		log.trace("Cell text: {}", text);
 
 		Cell xlsxCell = xlsxRow.createCell(xlsxCellIndex++);
-		// empty markdown cell is left blank
+		// empty Markdown cell is left blank
 		if (!text.isEmpty()) {
 			if (content.isFormatted()) {
 				xlsxCell.setCellValue(richText(content, header));
@@ -144,7 +140,7 @@ public class XlsxVisitor extends CustomVisitor {
 		int position = 0;
 		for (CellContent.Segment segment : content.segments()) {
 			int end = position + segment.text.length();
-			if (!segment.isPlain()) {
+			if (segment.isPlain()) {
 				// segments without explicit font use cell style font
 				richText.applyFont(position, end, font(segment, header));
 			}
