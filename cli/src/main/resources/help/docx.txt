@@ -3,7 +3,8 @@ Usage: mdt docx [options] [document-dir]
 Generate Word documents (.docx) from Markdown sources, one per language.
 
 Document directory files:
-  document.properties    Template variables, e.g. document.title, document.author
+  document.properties    Template variables, e.g. document.title, document.author;
+                         figure.label is image caption label, default Figure
   revisions.md           Revisions table: author, date, description
   document.md            Document source, if source.dir is not set
   project.properties     Optional project properties, see below

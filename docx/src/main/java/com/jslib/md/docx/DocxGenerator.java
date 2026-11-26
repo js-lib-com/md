@@ -120,6 +120,7 @@ public class DocxGenerator implements CommandHandler {
 
 		DocxTemplate template = new DocxTemplate(documentProperties);
 		DocxVisitor documentVisitor = new DocxVisitor(template, projectProperties, documentDir);
+		documentVisitor.setFigureLabel(documentProperties.getProperty("figure.label", DocxVisitor.DEFAULT_FIGURE_LABEL));
 
 		DocxRevisions revisions = new DocxRevisions(documentVisitor.getDocument());
 		try (Reader reader = reader(revisionsFile)) {

@@ -6,7 +6,9 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +27,8 @@ import org.junit.Test;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBrType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
+
+import com.jslib.md.docx.xml.DocxDocument;
 
 public class DocxVisitorBlockTest {
 	private XWPFDocument document;
@@ -242,6 +246,45 @@ public class DocxVisitorBlockTest {
 		for (String styleId : new String[]{"Quote", "QuoteChar", "IntenseQuote", "IntenseQuoteChar"}) {
 			assertThat(styleId, document.getStyles().styleExist(styleId), equalTo(true));
 		}
+	}
+
+	@Test
+	public void GivenBlockQuoteWithSeveralParagraphs_WhenVisit_ThenAllParagraphsUseQuoteStyle() throws IOException {
+		// GIVEN
+		String markdown = "> first\n>\n> second\n\nafter";
+
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
+		assertThat(texts(paragraphs), contains("first", "second", "after"));
+		assertThat(paragraphs.get(0).getStyle(), equalTo("IntenseQuote"));
+		assertThat(paragraphs.get(1).getStyle(), equalTo("IntenseQuote"));
+		assertThat(paragraphs.get(2).getStyle(), not(equalTo("IntenseQuote")));
+	}
+
+	@Test
+	public void GivenMissingAndUnsupportedImages_WhenVisit_ThenSkipImagesAndKeepCaptions() throws IOException {
+		// GIVEN
+		File imagesDir = Files.createTempDirectory("DocxVisitorBlockTest").toFile();
+		File svg = new File(imagesDir, "drawing.svg");
+		Files.writeString(svg.toPath(), "<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+		String markdown = "![missing](missing.png)\n\n![vector](drawing.svg)";
+
+		// WHEN
+		DocxDocument docx = TestDocuments.template();
+		DocxVisitor visitor = new DocxVisitor(docx, ProjectProperties.empty(), imagesDir);
+		visitor.setFigureLabel("Figura");
+		TestDocuments.parse(markdown).accept(visitor);
+		document = TestDocuments.reload(docx);
+		List<XWPFParagraph> paragraphs = document.getParagraphs();
+		List<XWPFParagraph> generated = new ArrayList<>(paragraphs.subList(templateParagraphsCount, paragraphs.size()));
+
+		// THEN
+		assertThat(document.getAllPictures(), hasSize(0));
+		assertThat(texts(generated).stream().filter(text -> !text.isEmpty()).collect(Collectors.toList()), contains("Figura 1 - missing", "Figura 2 - vector"));
+		svg.delete();
+		imagesDir.delete();
 	}
 
 	// --------------------------------------------------------------------------------------------

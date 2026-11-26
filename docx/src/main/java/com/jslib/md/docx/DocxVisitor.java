@@ -69,7 +69,8 @@ public class DocxVisitor extends CustomVisitor {
     private Element currentParagraph;
     private Element currentRun;
     private boolean ignoreParagraph;
-    private boolean blockQuoteDetected;
+    // block quote nesting depth; all paragraphs inside a block quote use quote style
+    private int blockQuoteDepth;
 
     public DocxVisitor(DocxTemplate template, ProjectProperties projectProperties, File imagesDir) throws IOException {
         this(new DocxDocument(template.getInputStream()), projectProperties, imagesDir);
@@ -155,8 +156,7 @@ public class DocxVisitor extends CustomVisitor {
         if (!ignoreParagraph) {
             log.debug("Create paragraph");
             currentParagraph = createParagraph();
-            if (blockQuoteDetected) {
-                blockQuoteDetected = false;
+            if (blockQuoteDepth > 0) {
                 log.debug("Set style: Quote");
                 setStyle(currentParagraph, DocxStyles.getIntenseQuoteStyleId());
             }
@@ -170,8 +170,9 @@ public class DocxVisitor extends CustomVisitor {
     @Override
     public void visit(BlockQuote blockQuote) {
         log.trace("visit(BlockQuote blockQuote)");
-        blockQuoteDetected = true;
+        ++blockQuoteDepth;
         super.visit(blockQuote);
+        --blockQuoteDepth;
     }
 
     @Override
@@ -425,7 +426,7 @@ public class DocxVisitor extends CustomVisitor {
         String textLiteral = text.getLiteral();
         if (pictureDescription) {
             pictureDescription = false;
-            textLiteral = "Figure " + ++pictureIndex + " - " + textLiteral;
+            textLiteral = figureLabel + " " + ++pictureIndex + " - " + textLiteral;
         }
         log.debug("Set run text: |{}|", textLiteral);
         Wml.setText(currentRun, textLiteral);
@@ -473,31 +474,38 @@ public class DocxVisitor extends CustomVisitor {
 
     // ------------------------------------------------------------------------
 
+    /** Default image caption label, used if document properties have no figure.label. */
+    public static final String DEFAULT_FIGURE_LABEL = "Figure";
+
+    private String figureLabel = DEFAULT_FIGURE_LABEL;
     private int pictureIndex;
     private boolean pictureDescription;
+
+    /** Set image caption label, e.g. Figura for Romanian documents; caption is label, image index and image text. */
+    public void setFigureLabel(String figureLabel) {
+        this.figureLabel = figureLabel;
+    }
 
     @Override
     public void visit(Image image) {
         log.trace("visit(Image image)");
 
-        log.debug("Create run");
-        Element run = Wml.add(currentParagraph, "r");
-
-        File imageFile = new File(imagesDir, image.getDestination());
-        Dimensions dimensions = images.getDimension(imageFile);
-        log.debug("Image dimensions: {}", dimensions);
-        if (dimensions.getWidth() > 600) {
-            dimensions.scaleWidth(600);
-            log.debug("Resize image to {}", dimensions);
-            imageFile = images.resize(imageFile, dimensions);
-        }
-
+        // image failure does not abort document generation; image is skipped but its caption is kept
         try {
+            File imageFile = new File(imagesDir, image.getDestination());
+            Dimensions dimensions = images.getDimension(imageFile);
+            log.debug("Image dimensions: {}", dimensions);
+            if (dimensions.getWidth() > 600) {
+                dimensions.scaleWidth(600);
+                log.debug("Resize image to {}", dimensions);
+                imageFile = images.resize(imageFile, dimensions);
+            }
+
             log.debug("Add run picture: {}", imageFile);
             String relId = document.addImage(Files.readAllBytes(imageFile.toPath()), getFileExtension(imageFile.getName()));
-            run.appendChild(drawing(relId, new File(image.getDestination()).getName(), dimensions));
-        } catch (Exception e) {
-            log.error("Fail to process image: {}: {}", e.getClass(), e.getMessage(), e);
+            Wml.add(currentParagraph, "r").appendChild(drawing(relId, new File(image.getDestination()).getName(), dimensions));
+        } catch (IOException | IllegalArgumentException e) {
+            log.error("Skip image {}: {}", image.getDestination(), e.getMessage());
         }
 
         // separated paragraph for image caption

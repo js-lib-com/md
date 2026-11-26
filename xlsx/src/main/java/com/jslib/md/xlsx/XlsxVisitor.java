@@ -108,8 +108,8 @@ public class XlsxVisitor extends CustomVisitor {
 	private List<TextRun> richText(CellContent content, boolean header) {
 		List<TextRun> runs = new ArrayList<>();
 		for (CellContent.Segment segment : content.segments()) {
-			// segments without explicit font use cell style font
-			runs.add(new TextRun(segment.text, segment.isPlain() ? font(segment, header) : null));
+			// segments without font of their own use cell style font
+			runs.add(new TextRun(segment.text, segment.needsFont() ? font(segment, header) : null));
 		}
 		return runs;
 	}
