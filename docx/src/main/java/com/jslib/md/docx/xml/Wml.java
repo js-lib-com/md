@@ -166,7 +166,7 @@ public final class Wml {
 			} else if (is(node, "br") || is(node, "cr")) {
 				builder.append('\n');
 			} else if (is(node, "p")) {
-				if (builder.length() > 0) {
+				if (!builder.isEmpty()) {
 					builder.append('\n');
 				}
 				text((Element) node, builder);
