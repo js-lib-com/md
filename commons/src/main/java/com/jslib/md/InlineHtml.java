@@ -2,6 +2,7 @@ package com.jslib.md;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,7 +24,17 @@ public final class InlineHtml {
 			Map.entry("sup", Format.SUPERSCRIPT), Map.entry("sub", Format.SUBSCRIPT), //
 			Map.entry("mark", Format.HIGHLIGHT));
 
-	private static final Pattern TAG = Pattern.compile("^<\\s*(/?)\\s*([a-zA-Z][a-zA-Z0-9]*)\\b([^>]*)>$", Pattern.DOTALL);
+	/** HTML element names, current and obsolete, used to tell HTML tags from text that only looks like a tag. */
+	private static final Set<String> HTML_ELEMENTS = Set.of( //
+			"a", "abbr", "acronym", "address", "applet", "area", "article", "aside", "audio", "b", "base", "basefont", "bdi", "bdo", "big", "blink", "blockquote", "body", "br", "button", //
+			"canvas", "caption", "center", "cite", "code", "col", "colgroup", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "dir", "div", "dl", "dt", "em", "embed", //
+			"fieldset", "figcaption", "figure", "font", "footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html", //
+			"i", "iframe", "img", "input", "ins", "kbd", "label", "legend", "li", "link", "main", "map", "mark", "marquee", "math", "menu", "meta", "meter", "nav", "nobr", "noframes", "noscript", //
+			"object", "ol", "optgroup", "option", "output", "p", "param", "picture", "pre", "progress", "q", "rp", "rt", "ruby", "s", "samp", "script", "search", "section", "select", "slot", //
+			"small", "source", "span", "strike", "strong", "style", "sub", "summary", "sup", "svg", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", //
+			"tr", "track", "tt", "u", "ul", "var", "video", "wbr");
+
+	private static final Pattern TAG =Pattern.compile("^<\\s*(/?)\\s*([a-zA-Z][a-zA-Z0-9]*)\\b([^>]*)>$", Pattern.DOTALL);
 	private static final Pattern HREF = Pattern.compile("\\bhref\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", Pattern.CASE_INSENSITIVE);
 
 	private InlineHtml() {
@@ -36,6 +47,19 @@ public final class InlineHtml {
 			return null;
 		}
 		return new Tag(matcher.group(2).toLowerCase(), !matcher.group(1).isEmpty(), matcher.group(3));
+	}
+
+	/**
+	 * Test if inline HTML literal is actually text that only looks like a tag, e.g. <code>&lt;special&gt;</code>, and
+	 * should be rendered as is. Comments, processing instructions, declarations and tags of known HTML elements are not
+	 * text.
+	 */
+	public static boolean isText(String literal) {
+		if (literal.startsWith("<!") || literal.startsWith("<?")) {
+			return false;
+		}
+		Tag tag = parse(literal);
+		return tag == null || !HTML_ELEMENTS.contains(tag.name);
 	}
 
 	public static final class Tag {

@@ -132,6 +132,11 @@ final class CellContent extends AbstractVisitor {
 
 	@Override
 	public void visit(HtmlInline htmlInline) {
+		if (InlineHtml.isText(htmlInline.getLiteral())) {
+			// not an HTML element, e.g. <special>, so it is cell text
+			append(htmlInline.getLiteral(), null);
+			return;
+		}
 		InlineHtml.Tag tag = InlineHtml.parse(htmlInline.getLiteral());
 		if (tag == null || htmlFormats.apply(tag)) {
 			return;

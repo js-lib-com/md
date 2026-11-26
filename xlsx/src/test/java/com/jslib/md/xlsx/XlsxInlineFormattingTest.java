@@ -101,6 +101,20 @@ public class XlsxInlineFormattingTest {
 	}
 
 	@Test
+	public void GivenTextThatLooksLikeTag_WhenExecute_ThenKeepItAsText() throws Exception {
+		// GIVEN
+		String content = "Ünïcödé & <special> \"quotes\" <b>bold</b> <span>span</span> <!-- note -->";
+
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
+		// unknown element is text while HTML tags and comments are not
+		assertThat(cell.getStringCellValue(), equalTo("Ünïcödé & <special> \"quotes\" bold span"));
+		assertThat(runs(cell), equalTo("[Ünïcödé & <special> \"quotes\" ]|[bold]b|[ span]"));
+	}
+
+	@Test
 	public void GivenAnchorAndMarkdownLinks_WhenExecute_ThenSetFirstLinkAsCellHyperlink() throws Exception {
 		// GIVEN
 		String content = "see <a href=\"https://x.org/?a=1&amp;b=2\">site</a> or [other](https://y.org)";

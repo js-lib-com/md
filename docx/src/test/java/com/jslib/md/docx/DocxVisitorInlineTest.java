@@ -141,6 +141,20 @@ public class DocxVisitorInlineTest {
 		assertThat(format(paragraph).replaceAll("[^]|]+]", ""), equalTo("||||"));
 	}
 
+	@Test
+	public void GivenTextThatLooksLikeTag_WhenVisit_ThenKeepItAsText() throws Exception {
+		// GIVEN
+		String markdown = "a <special> and **<field/>** <span>b</span> <!-- note -->";
+
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
+		// unknown elements are text, keeping enclosing emphasis, while HTML tags and comments are not
+		assertThat(paragraph.getText(), equalTo("a <special> and <field/> b "));
+		assertThat(format(paragraph), equalTo("[a ]|[<special>]|[ and ]|[<field/>]b|[ ]|[b]|[ ]"));
+	}
+
 	private static String format(XWPFParagraph paragraph) {
 		return paragraph.getRuns().stream().map(DocxVisitorInlineTest::format).collect(Collectors.joining("|"));
 	}
