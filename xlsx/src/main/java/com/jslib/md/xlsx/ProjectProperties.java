@@ -6,6 +6,8 @@ public class ProjectProperties {
 
 	public final String sourceDir;
 	public final String fileName;
+	/** Workbook author stored in document properties; null if not configured. */
+	public final String documentAuthor;
 	/** Compute table columns width from the quantity of text in every column and wrap cells text. */
 	public final boolean tableAutoFit;
 	/** Minimal table column width, in percent, used when table auto-fit is enabled. */
@@ -18,6 +20,8 @@ public class ProjectProperties {
 	public ProjectProperties(Properties properties) {
 		this.sourceDir = property(properties, "source.dir", null);
 		this.fileName = property(properties, "file.name", "document");
+		String documentAuthor = property(properties, "document.author", "").strip();
+		this.documentAuthor = documentAuthor.isEmpty() ? null : documentAuthor;
 		this.tableAutoFit = Boolean.parseBoolean(property(properties, "table.auto.fit", "false"));
 		this.tableColumnMinWidth = property(properties, "table.column.min.width", 10, 0, 100);
 		this.tableColumnOutliers = property(properties, "table.column.outliers", 20, 0, 50);

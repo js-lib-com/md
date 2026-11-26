@@ -103,6 +103,38 @@ public class XlsxGeneratorFilesTest {
 		assertThat(safeNames, contains("_quoted_", "it's", "a_b_c_d_e_f_g_h", "empty"));
 	}
 
+	@Test
+	public void GivenDocumentAuthor_WhenExecute_ThenWriteItAsWorkbookCreator() throws Exception {
+		// GIVEN
+		write("project.properties", "document.author=R&D <team> \"Iași\"\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String creator = creator(execute());
+
+		// THEN
+		assertThat(creator, equalTo("R&D <team> \"Iași\""));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentAuthor_WhenExecute_ThenUseApplicationName() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingCreator = creator(execute());
+		write("project.properties", "document.author=  \n");
+
+		// WHEN
+		String blankCreator = creator(execute());
+
+		// THEN
+		assertThat(missingCreator, equalTo("mdt"));
+		assertThat(blankCreator, equalTo("mdt"));
+	}
+
+	private static String creator(Workbook workbook) {
+		return ((XSSFWorkbook) workbook).getProperties().getCoreProperties().getCreator();
+	}
+
 	private void write(String fileName, String content) throws IOException {
 		Files.write(new File(documentDir, fileName).toPath(), content.getBytes(StandardCharsets.UTF_8));
 	}

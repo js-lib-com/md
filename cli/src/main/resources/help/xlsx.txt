@@ -4,6 +4,7 @@ Generate an Excel workbook (.xlsx) from markdown tables, one sheet per markdown
 file, in file name order. Files without tables are skipped.
 
 Project properties:
+  document.author         Workbook author, in document properties; default mdt
   file.name               Generated file name, without extension; default document
   source.dir              Directory with markdown files; default document directory
   table.auto.fit          Compute columns width from text quantity; default false

@@ -42,7 +42,7 @@ public final class Workbook {
 	private static final String CORE_PROPERTIES_REL = "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties";
 	private static final String EXTENDED_PROPERTIES_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties";
 
-	/** Application name stored in document properties, used also as document creator. */
+	/** Application name stored in document properties, used also as document creator if author is not set. */
 	public static final String APPLICATION = "mdt";
 
 	private static final String CONTENT_TYPE_PREFIX = "application/vnd.openxmlformats-officedocument.spreadsheetml.";
@@ -50,6 +50,14 @@ public final class Workbook {
 	private final List<Sheet> sheets = new ArrayList<>();
 	/** Creation time stored in document properties, with seconds precision as required by W3CDTF format. */
 	private Instant created = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+
+	/** Author stored in document properties as creator; null if not set. */
+	private String author;
+
+	/** Set workbook author; if not set, application name is used as document creator. */
+	public void setAuthor(String author) {
+		this.author = author;
+	}
 
 	/** Override creation time, e.g. for reproducible output; default is workbook instance creation time. */
 	public void setCreated(Instant created) {
@@ -194,7 +202,7 @@ public final class Workbook {
 		xml.writeNamespace("xsi", XSI_NS);
 
 		xml.writeStartElement(DC_NS, "creator");
-		xml.writeCharacters(APPLICATION);
+		xml.writeCharacters(author != null ? author : APPLICATION);
 		xml.writeEndElement();
 		for (String element : new String[] { "created", "modified" }) {
 			xml.writeStartElement(DCTERMS_NS, element);

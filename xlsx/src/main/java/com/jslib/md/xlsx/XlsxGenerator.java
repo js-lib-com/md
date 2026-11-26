@@ -56,6 +56,9 @@ public class XlsxGenerator implements CommandHandler {
 		File sourceDir = projectProperties.sourceDir != null ? new File(documentDir, projectProperties.sourceDir) : documentDir;
 
 		Workbook workbook = new Workbook();
+		if (projectProperties.documentAuthor != null) {
+			workbook.setAuthor(projectProperties.documentAuthor);
+		}
 		File[] markdownFiles = sourceDir.listFiles(file -> file.getName().endsWith(".md"));
 		if (markdownFiles == null) {
 			throw new IOException("Fail to list source directory " + sourceDir);
