@@ -30,7 +30,7 @@ public class XlsxGenerator implements CommandHandler {
 	private static final Logger log = LoggerFactory.getLogger(XlsxGenerator.class);
 
 	private static final String PROJECT_PROPERTIES = "project.properties";
-	/** Document properties, shared with DOCX generator; only document author and title are used. */
+	/** Document properties, shared with DOCX generator; only document author, title and subject are used. */
 	private static final String DOCUMENT_PROPERTIES = "document.properties";
 
 	private final Parser parser;
@@ -60,6 +60,10 @@ public class XlsxGenerator implements CommandHandler {
 		String title = documentProperties.getProperty("document.title", "").strip();
 		if (!title.isEmpty()) {
 			workbook.setTitle(title);
+		}
+		String subject = documentProperties.getProperty("document.subject", "").strip();
+		if (!subject.isEmpty()) {
+			workbook.setSubject(subject);
 		}
 		File[] markdownFiles = sourceDir.listFiles(file -> file.getName().endsWith(".md"));
 		if (markdownFiles == null) {

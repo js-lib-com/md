@@ -67,6 +67,14 @@ public final class Workbook {
 		this.title = title;
 	}
 
+	/** Subject stored in document properties; null if not set. */
+	private String subject;
+
+	/** Set workbook subject; if not set, document properties have no subject. */
+	public void setSubject(String subject) {
+		this.subject = subject;
+	}
+
 	/** Override creation time, e.g. for reproducible output; default is workbook instance creation time. */
 	public void setCreated(Instant created) {
 		this.created = created.truncatedTo(ChronoUnit.SECONDS);
@@ -197,7 +205,7 @@ public final class Workbook {
 		xml.writeEndElement();
 	}
 
-	/** Core properties: creator, optional title, creation and modification time. */
+	/** Core properties: creator, optional title and subject, creation and modification time. */
 	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setPrefix("cp", CORE_NS);
 		xml.setPrefix("dc", DC_NS);
@@ -215,6 +223,11 @@ public final class Workbook {
 		if (title != null) {
 			xml.writeStartElement(DC_NS, "title");
 			xml.writeCharacters(title);
+			xml.writeEndElement();
+		}
+		if (subject != null) {
+			xml.writeStartElement(DC_NS, "subject");
+			xml.writeCharacters(subject);
 			xml.writeEndElement();
 		}
 		for (String element : new String[] { "created", "modified" }) {

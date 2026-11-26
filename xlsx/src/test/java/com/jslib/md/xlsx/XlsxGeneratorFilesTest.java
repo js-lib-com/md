@@ -161,6 +161,34 @@ public class XlsxGeneratorFilesTest {
 		assertThat(blankTitle, nullValue());
 	}
 
+	@Test
+	public void GivenDocumentSubject_WhenExecute_ThenWriteItAsWorkbookSubject() throws Exception {
+		// GIVEN
+		write("document.properties", "document.subject=Work orders & <tasks> \"Iași\"\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String subject = coreProperties(execute()).getSubject();
+
+		// THEN
+		assertThat(subject, equalTo("Work orders & <tasks> \"Iași\""));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentSubject_WhenExecute_ThenWriteNoSubject() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingSubject = coreProperties(execute()).getSubject();
+		write("document.properties", "document.subject=  \n");
+
+		// WHEN
+		String blankSubject = coreProperties(execute()).getSubject();
+
+		// THEN
+		assertThat(missingSubject, nullValue());
+		assertThat(blankSubject, nullValue());
+	}
+
 	private static POIXMLProperties.CoreProperties coreProperties(Workbook workbook) {
 		return ((XSSFWorkbook) workbook).getProperties().getCoreProperties();
 	}
