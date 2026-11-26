@@ -3,6 +3,7 @@ package com.jslib.md.xlsx;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -129,6 +131,38 @@ public class XlsxGeneratorFilesTest {
 		// THEN
 		assertThat(missingCreator, equalTo("mdt"));
 		assertThat(blankCreator, equalTo("mdt"));
+	}
+
+	@Test
+	public void GivenDocumentTitle_WhenExecute_ThenWriteItAsWorkbookTitle() throws Exception {
+		// GIVEN
+		write("document.properties", "document.title=Tables & <Fields> \"Iași\"\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String title = coreProperties(execute()).getTitle();
+
+		// THEN
+		assertThat(title, equalTo("Tables & <Fields> \"Iași\""));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentTitle_WhenExecute_ThenWriteNoTitle() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingTitle = coreProperties(execute()).getTitle();
+		write("document.properties", "document.title=  \n");
+
+		// WHEN
+		String blankTitle = coreProperties(execute()).getTitle();
+
+		// THEN
+		assertThat(missingTitle, nullValue());
+		assertThat(blankTitle, nullValue());
+	}
+
+	private static POIXMLProperties.CoreProperties coreProperties(Workbook workbook) {
+		return ((XSSFWorkbook) workbook).getProperties().getCoreProperties();
 	}
 
 	private static String creator(Workbook workbook) {

@@ -59,6 +59,14 @@ public final class Workbook {
 		this.author = author;
 	}
 
+	/** Title stored in document properties; null if not set. */
+	private String title;
+
+	/** Set workbook title; if not set, document properties have no title. */
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
 	/** Override creation time, e.g. for reproducible output; default is workbook instance creation time. */
 	public void setCreated(Instant created) {
 		this.created = created.truncatedTo(ChronoUnit.SECONDS);
@@ -189,7 +197,7 @@ public final class Workbook {
 		xml.writeEndElement();
 	}
 
-	/** Core properties: creator, creation and modification time. */
+	/** Core properties: creator, optional title, creation and modification time. */
 	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setPrefix("cp", CORE_NS);
 		xml.setPrefix("dc", DC_NS);
@@ -204,6 +212,11 @@ public final class Workbook {
 		xml.writeStartElement(DC_NS, "creator");
 		xml.writeCharacters(author != null ? author : APPLICATION);
 		xml.writeEndElement();
+		if (title != null) {
+			xml.writeStartElement(DC_NS, "title");
+			xml.writeCharacters(title);
+			xml.writeEndElement();
+		}
 		for (String element : new String[] { "created", "modified" }) {
 			xml.writeStartElement(DCTERMS_NS, element);
 			xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");
