@@ -108,31 +108,34 @@ public class XlsxGeneratorFilesTest {
 	}
 
 	@Test
-	public void GivenDocumentAuthor_WhenExecute_ThenWriteItAsWorkbookCreator() throws Exception {
+	public void GivenDocumentAuthor_WhenExecute_ThenWriteItAsWorkbookCreatorAndLastModifiedBy() throws Exception {
 		// GIVEN
 		write("document.properties", "document.author=R&D <team> \"Iași\"\n");
 		write("table.md", TABLE);
 
 		// WHEN
-		String creator = creator(execute());
+		POIXMLProperties.CoreProperties properties = coreProperties(execute());
 
 		// THEN
-		assertThat(creator, equalTo("R&D <team> \"Iași\""));
+		assertThat(properties.getCreator(), equalTo("R&D <team> \"Iași\""));
+		assertThat(properties.getLastModifiedByUser(), equalTo("R&D <team> \"Iași\""));
 	}
 
 	@Test
 	public void GivenMissingOrBlankDocumentAuthor_WhenExecute_ThenUseApplicationName() throws Exception {
 		// GIVEN
 		write("table.md", TABLE);
-		String missingCreator = creator(execute());
+		POIXMLProperties.CoreProperties missing = coreProperties(execute());
 		write("document.properties", "document.author=  \n");
 
 		// WHEN
-		String blankCreator = creator(execute());
+		POIXMLProperties.CoreProperties blank = coreProperties(execute());
 
 		// THEN
-		assertThat(missingCreator, equalTo("mdt"));
-		assertThat(blankCreator, equalTo("mdt"));
+		assertThat(missing.getCreator(), equalTo("mdt"));
+		assertThat(missing.getLastModifiedByUser(), equalTo("mdt"));
+		assertThat(blank.getCreator(), equalTo("mdt"));
+		assertThat(blank.getLastModifiedByUser(), equalTo("mdt"));
 	}
 
 	@Test
@@ -468,10 +471,6 @@ public class XlsxGeneratorFilesTest {
 
 	private static POIXMLProperties.CoreProperties coreProperties(Workbook workbook) {
 		return ((XSSFWorkbook) workbook).getProperties().getCoreProperties();
-	}
-
-	private static String creator(Workbook workbook) {
-		return ((XSSFWorkbook) workbook).getProperties().getCoreProperties().getCreator();
 	}
 
 	private void write(String fileName, String content) throws IOException {

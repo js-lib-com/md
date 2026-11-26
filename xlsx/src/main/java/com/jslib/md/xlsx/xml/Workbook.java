@@ -51,7 +51,7 @@ public final class Workbook {
 	/** Creation time stored in document properties, with seconds precision as required by W3CDTF format. */
 	private Instant created = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
-	/** Optional document properties, null if not set. Author is stored as creator. */
+	/** Optional document properties, null if not set. Author is stored as creator and last modified by. */
 	private String author;
 	private String title;
 	private String subject;
@@ -65,7 +65,7 @@ public final class Workbook {
 	private String company;
 	private String manager;
 
-	/** Set workbook author; if null, application name is used as document creator. */
+	/** Set workbook author, both creator and last modified by; if null, application name is used instead. */
 	public void setAuthor(String author) {
 		this.author = author;
 	}
@@ -263,7 +263,7 @@ public final class Workbook {
 		xml.writeEndElement();
 	}
 
-	/** Core properties: creator, optional title, subject, keywords, category, description, status, version, revision and language, creation and modification time. */
+	/** Core properties: creator, last modified by, optional title, subject, keywords, category, description, status, version, revision and language, creation and modification time. */
 	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setPrefix("cp", CORE_NS);
 		xml.setPrefix("dc", DC_NS);
@@ -275,7 +275,10 @@ public final class Workbook {
 		xml.writeNamespace("dcterms", DCTERMS_NS);
 		xml.writeNamespace("xsi", XSI_NS);
 
-		textElement(xml, DC_NS, "creator", author != null ? author : APPLICATION);
+		// workbook is generated in a single step so its creator is also the one that last modified it
+		String creator = author != null ? author : APPLICATION;
+		textElement(xml, DC_NS, "creator", creator);
+		textElement(xml, CORE_NS, "lastModifiedBy", creator);
 		textElement(xml, DC_NS, "title", title);
 		textElement(xml, DC_NS, "subject", subject);
 		textElement(xml, CORE_NS, "keywords", keywords);

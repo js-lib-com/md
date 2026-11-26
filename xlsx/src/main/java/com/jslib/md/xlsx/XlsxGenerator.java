@@ -51,7 +51,7 @@ public class XlsxGenerator implements CommandHandler {
 		File sourceDir = projectProperties.sourceDir != null ? new File(documentDir, projectProperties.sourceDir) : documentDir;
 
 		Workbook workbook = new Workbook();
-		// document properties is optional; without author, workbook creator is the application name
+		// document properties is optional; without author, workbook creator and last modified by is the application name
 		Properties documentProperties = properties(new File(documentDir, DOCUMENT_PROPERTIES));
 		workbook.setAuthor(value(documentProperties, "document.author"));
 		workbook.setTitle(value(documentProperties, "document.title"));
