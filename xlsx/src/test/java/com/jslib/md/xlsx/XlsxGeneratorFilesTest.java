@@ -273,6 +273,38 @@ public class XlsxGeneratorFilesTest {
 		assertThat(blankDescription, nullValue());
 	}
 
+	@Test
+	public void GivenDocumentCompany_WhenExecute_ThenWriteItAsWorkbookCompany() throws Exception {
+		// GIVEN
+		write("document.properties", "document.company=R&D <Grid> \"Iași\"\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String company = extendedProperties(execute()).getCompany();
+
+		// THEN
+		assertThat(company, equalTo("R&D <Grid> \"Iași\""));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentCompany_WhenExecute_ThenWriteNoCompany() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingCompany = extendedProperties(execute()).getCompany();
+		write("document.properties", "document.company=  \n");
+
+		// WHEN
+		String blankCompany = extendedProperties(execute()).getCompany();
+
+		// THEN
+		assertThat(missingCompany, nullValue());
+		assertThat(blankCompany, nullValue());
+	}
+
+	private static POIXMLProperties.ExtendedProperties extendedProperties(Workbook workbook) {
+		return ((XSSFWorkbook) workbook).getProperties().getExtendedProperties();
+	}
+
 	private static POIXMLProperties.CoreProperties coreProperties(Workbook workbook) {
 		return ((XSSFWorkbook) workbook).getProperties().getCoreProperties();
 	}

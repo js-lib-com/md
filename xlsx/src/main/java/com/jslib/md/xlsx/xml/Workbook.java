@@ -58,6 +58,7 @@ public final class Workbook {
 	private String keywords;
 	private String category;
 	private String description;
+	private String company;
 
 	/** Set workbook author; if null, application name is used as document creator. */
 	public void setAuthor(String author) {
@@ -87,6 +88,11 @@ public final class Workbook {
 	/** Set workbook description, displayed by Excel as comments; if null, document properties have no description. */
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	/** Set company, stored in extended document properties; if null, document properties have no company. */
+	public void setCompany(String company) {
+		this.company = company;
 	}
 
 	/** Override creation time, e.g. for reproducible output; default is workbook instance creation time. */
@@ -255,14 +261,13 @@ public final class Workbook {
 		}
 	}
 
-	/** Extended properties: application name. */
+	/** Extended properties: application name and optional company. */
 	private void writeExtendedProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setDefaultNamespace(EXTENDED_NS);
 		xml.writeStartElement(EXTENDED_NS, "Properties");
 		xml.writeDefaultNamespace(EXTENDED_NS);
-		xml.writeStartElement(EXTENDED_NS, "Application");
-		xml.writeCharacters(APPLICATION);
-		xml.writeEndElement();
+		textElement(xml, EXTENDED_NS, "Application", APPLICATION);
+		textElement(xml, EXTENDED_NS, "Company", company);
 		xml.writeEndElement();
 	}
 
