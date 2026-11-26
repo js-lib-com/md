@@ -9,6 +9,7 @@
 		<module>commons</module>
 		<module>docx</module>
 		<module>xlsx</module>
+		<module>translate</module>
 		<module>etl</module>
 		<module>script</module>
 		<module>cli</module>
@@ -37,6 +38,11 @@
 			<dependency>
 				<groupId>com.js-lib.md</groupId>
 				<artifactId>xlsx</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.js-lib.md</groupId>
+				<artifactId>translate</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 		

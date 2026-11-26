@@ -10,6 +10,7 @@ import com.jslib.md.CommandHandler;
 import com.jslib.md.cli.Arguments.Command;
 import com.jslib.md.cli.Arguments.UsageException;
 import com.jslib.md.docx.DocxGenerator;
+import com.jslib.md.translate.Translator;
 import com.jslib.md.xlsx.XlsxGenerator;
 
 /**

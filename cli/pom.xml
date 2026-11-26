@@ -22,8 +22,8 @@
 			<artifactId>xlsx</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.google.code.gson</groupId>
-			<artifactId>gson</artifactId>
+			<groupId>com.js-lib.md</groupId>
+			<artifactId>translate</artifactId>
 		</dependency>
 
 		<!-- logging implementation for command line -->

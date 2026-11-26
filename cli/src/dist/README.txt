@@ -15,7 +15,7 @@ Setup
 Usage
   mdt docx [document-dir]        generate Word documents
   mdt xlsx [document-dir]        generate Excel workbook
-  mdt translate [document-dir]   translate sources to Romanian using local LLM
+  mdt translate [document-dir]   translate sources using an OpenAI compatible API
   mdt --help                     general help
   mdt <command> --help           command help, including project properties
 

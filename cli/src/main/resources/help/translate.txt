@@ -1,12 +1,14 @@
 Usage: mdt translate [options] [document-dir]
 
-Translate document.md, revisions.md and document.properties from English to
-Romanian using an OpenAI compatible chat completions API, by default the
-local llama.cpp server, writing document_ro.md, revisions_ro.md and
-document_ro.properties. A file is written only if fully translated.
+Translate document sources from English to every language from the languages
+project property, Romanian if not set, using an OpenAI compatible chat
+completions API, by default a local llama.cpp server. Sources are
+document.md, or chapter files from source.dir, revisions.md and
+document.properties; translations are written beside sources with language
+suffix, e.g. document_ro.md. A file is written only if fully translated.
 
 Environment:
-  OPENAI_BASE_URL  API base URL; default http://jarvis.local/v1
+  OPENAI_BASE_URL  API base URL; default http://localhost:8080/v1
                    use https://api.openai.com/v1 for OpenAI
   OPENAI_API_KEY   API key; optional, required by OpenAI
   OPENAI_MODEL     model; default is the model loaded by server,
