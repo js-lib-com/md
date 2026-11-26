@@ -1,7 +1,9 @@
 package com.jslib.md.xlsx;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThrows;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,46 +46,64 @@ public class XlsxAutoFitTest {
 
 	@Test
 	public void GivenAutoFit_WhenExecute_ThenShareDefaultTableWidthByTextQuantity() throws Exception {
-		// when
-		Sheet sheet = generate("table.auto.fit=true\n", TABLE);
+		// GIVEN
+		String projectProperties = "table.auto.fit=true\n";
 
-		// then: default table width of 100 characters, in 1/256 of character
+		// WHEN
+		Sheet sheet = generate(projectProperties, TABLE);
+
+		// THEN
+		// default table width of 100 characters, in 1/256 of character
 		assertThat(sheet.getColumnWidth(0), equalTo(3656));
 		assertThat(sheet.getColumnWidth(1), equalTo(21944));
 	}
 
 	@Test
 	public void GivenAutoFitWithMinWidthAndTableWidth_WhenExecute_ThenApplyBoth() throws Exception {
-		// when
-		Sheet sheet = generate("table.auto.fit=true\ntable.column.min.width=25\nxlsx.table.width=120\n", TABLE);
+		// GIVEN
+		String projectProperties = "table.auto.fit=true\ntable.column.min.width=25\nxlsx.table.width=120\n";
 
-		// then: 25% and 75% of 120 characters
+		// WHEN
+		Sheet sheet = generate(projectProperties, TABLE);
+
+		// THEN
+		// 25% and 75% of 120 characters
 		assertThat(sheet.getColumnWidth(0), equalTo(30 * 256));
 		assertThat(sheet.getColumnWidth(1), equalTo(90 * 256));
 	}
 
 	@Test
 	public void GivenAutoFitAndSeveralTables_WhenExecute_ThenMeasureAllRows() throws Exception {
-		// when: second table header is skipped and its body rows are appended to sheet
-		Sheet sheet = generate("table.auto.fit=true\ntable.column.min.width=0\n", TABLE + "\n|Name|Description|\n|-|-|\n|longer name value|x|\n");
+		// GIVEN
+		// second table header is skipped and its body rows are appended to sheet
+		String projectProperties = "table.auto.fit=true\ntable.column.min.width=0\n";
+		String markdown = TABLE + "\n|Name|Description|\n|-|-|\n|longer name value|x|\n";
 
-		// then: average lengths (4 + 1 + 17) / 3 = 7.33 and (11 + 19 + 1) / 3 = 10.33, that is, 41.50% and 58.50% after rounding to fiftieths of percent
+		// WHEN
+		Sheet sheet = generate(projectProperties, markdown);
+
+		// THEN
+		// average lengths (4 + 1 + 17) / 3 = 7.33 and (11 + 19 + 1) / 3 = 10.33, that is, 41.50% and 58.50% after rounding to fiftieths of percent
 		assertThat(sheet.getColumnWidth(0), equalTo(10624));
 		assertThat(sheet.getColumnWidth(1), equalTo(14976));
 	}
 
 	@Test
 	public void GivenAutoFitWithOutlierCell_WhenExecute_ThenIgnoreItByDefault() throws Exception {
-		// given: note column lengths 4, 8, 8, 1, 240; step column lengths 9, 10, 10, 10, 10
+		// GIVEN
+		// note column lengths 4, 8, 8, 1, 240; step column lengths 9, 10, 10, 10, 10
 		String table = "|Step text|Note|\n|-|-|\n|aaaaaaaaaa|optional|\n|bbbbbbbbbb|required|\n|cccccccccc|-|\n|dddddddddd|" + "x".repeat(240) + "|\n";
+		String trimmedProperties = "table.auto.fit=true\n";
+		String plainProperties = "table.auto.fit=true\ntable.column.outliers=0\n";
 
-		// when
-		Sheet trimmed = generate("table.auto.fit=true\n", table);
+		// WHEN
+		Sheet trimmed = generate(trimmedProperties, table);
 		int[] trimmedWidths = { trimmed.getColumnWidth(0), trimmed.getColumnWidth(1) };
 		workbook.close();
-		Sheet plain = generate("table.auto.fit=true\ntable.column.outliers=0\n", table);
+		Sheet plain = generate(plainProperties, table);
 
-		// then: trimmed means 10 and 6.67, that is, 60 and 40 characters; plain means 9.8 and 52.2, that is, 15.8 and 84.2
+		// THEN
+		// trimmed means 10 and 6.67, that is, 60 and 40 characters; plain means 9.8 and 52.2, that is, 15.8 and 84.2
 		assertThat(trimmedWidths[0], equalTo(60 * 256));
 		assertThat(trimmedWidths[1], equalTo(40 * 256));
 		assertThat(plain.getColumnWidth(0), equalTo(4045));
@@ -92,10 +112,13 @@ public class XlsxAutoFitTest {
 
 	@Test
 	public void GivenAutoFit_WhenExecute_ThenWrapAllCellsAlignedTop() throws Exception {
-		// when
-		Sheet sheet = generate("table.auto.fit=true\n", TABLE);
+		// GIVEN
+		String projectProperties = "table.auto.fit=true\n";
 
-		// then
+		// WHEN
+		Sheet sheet = generate(projectProperties, TABLE);
+
+		// THEN
 		for (int row = 0; row < 2; ++row) {
 			for (int column = 0; column < 2; ++column) {
 				assertThat(sheet.getRow(row).getCell(column).getCellStyle().getWrapText(), equalTo(true));
@@ -106,16 +129,26 @@ public class XlsxAutoFitTest {
 
 	@Test
 	public void GivenAutoFitDisabled_WhenExecute_ThenDoNotWrap() throws Exception {
-		// when
-		Sheet sheet = generate("", TABLE);
+		// GIVEN
+		String projectProperties = "";
 
-		// then
+		// WHEN
+		Sheet sheet = generate(projectProperties, TABLE);
+
+		// THEN
 		assertThat(sheet.getRow(1).getCell(1).getCellStyle().getWrapText(), equalTo(false));
 	}
 
-	@Test(expected = IllegalArgumentException.class)
-	public void GivenInvalidTableWidth_WhenExecute_ThenThrow() throws Exception {
-		generate("table.auto.fit=true\nxlsx.table.width=wide\n", TABLE);
+	@Test
+	public void GivenInvalidTableWidth_WhenExecute_ThenThrow() {
+		// GIVEN
+		String projectProperties = "table.auto.fit=true\nxlsx.table.width=wide\n";
+
+		// WHEN
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> generate(projectProperties, TABLE));
+
+		// THEN
+		assertThat(exception.getMessage(), containsString("xlsx.table.width=wide"));
 	}
 
 	private Sheet generate(String projectProperties, String markdown) throws Exception {

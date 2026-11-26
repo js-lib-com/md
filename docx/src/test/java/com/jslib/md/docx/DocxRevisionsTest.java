@@ -33,15 +33,15 @@ public class DocxRevisionsTest {
 
 	@Test
 	public void GivenFormattedAndEmptyCells_WhenVisit_ThenCopyPlainTextPerColumn() {
-		// given
+		// GIVEN
 		String markdown = "|Author|Date|Description|\n|-|-|-|\n" //
 				+ "|**Iulian** Rotaru|2026-11-23|Fix `DocxRevisions` for [links](https://x.org) and *emphasis*.|\n" //
 				+ "|Iulian Rotaru||Empty date cell.|\n";
 
-		// when
+		// WHEN
 		generate(markdown);
 
-		// then
+		// THEN
 		assertThat(table.getNumberOfRows(), equalTo(templateRowsCount + 2));
 		assertThat(cells(templateRowsCount), contains("Iulian Rotaru", "2026-11-23", "Fix DocxRevisions for links and emphasis."));
 		assertThat(cells(templateRowsCount + 1), contains("Iulian Rotaru", "", "Empty date cell."));
@@ -49,10 +49,13 @@ public class DocxRevisionsTest {
 
 	@Test
 	public void GivenTableWithHeaderOnly_WhenVisit_ThenAddNoRows() {
-		// when
-		generate("|Author|Date|Description|\n|-|-|-|\n");
+		// GIVEN
+		String markdown = "|Author|Date|Description|\n|-|-|-|\n";
 
-		// then
+		// WHEN
+		generate(markdown);
+
+		// THEN
 		assertThat(table.getNumberOfRows(), equalTo(templateRowsCount));
 	}
 

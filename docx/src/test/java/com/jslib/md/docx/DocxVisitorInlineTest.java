@@ -24,82 +24,109 @@ import com.jslib.md.docx.template.DocxTemplate;
 public class DocxVisitorInlineTest {
 	@Test
 	public void GivenWrappedParagraph_WhenVisit_ThenJoinLinesWithSpace() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("First line\nsecond line\nthird line.");
+		// GIVEN
+		String markdown = "First line\nsecond line\nthird line.";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(paragraph.getText(), equalTo("First line second line third line."));
 	}
 
 	@Test
 	public void GivenHardLineBreak_WhenVisit_ThenAddBreak() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("First line  \nsecond line");
+		// GIVEN
+		String markdown = "First line  \nsecond line";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(paragraph.getText(), equalTo("First line\nsecond line"));
 	}
 
 	@Test
 	public void GivenEmphasisWithInlineCode_WhenVisit_ThenKeepItalicAfterCode() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("plain *italic `code` still italic* plain");
+		// GIVEN
+		String markdown = "plain *italic `code` still italic* plain";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(format(paragraph), equalTo("[plain ]|[italic ]i|[code]ic|[ still italic]i|[ plain]"));
 	}
 
 	@Test
 	public void GivenNestedEmphasis_WhenVisit_ThenCombineBoldAndItalic() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("**bold *both* bold**\nnext");
+		// GIVEN
+		String markdown = "**bold *both* bold**\nnext";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(format(paragraph), equalTo("[bold ]b|[both]ib|[ bold]b|[ ]|[next]"));
 	}
 
 	@Test
 	public void GivenInlineHtmlFormattingTags_WhenVisit_ThenApplyRunFormatting() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("a <b>bold</b> <i>it</i> <u>u</u> <s>s</s> <code>c</code> x<sup>2</sup> H<sub>2</sub>O <mark>m</mark>");
+		// GIVEN
+		String markdown = "a <b>bold</b> <i>it</i> <u>u</u> <s>s</s> <code>c</code> x<sup>2</sup> H<sub>2</sub>O <mark>m</mark>";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(format(paragraph), equalTo("[a ]|[bold]b|[ ]|[it]i|[ ]|[u]u|[ ]|[s]s|[ ]|[c]c|[ x]|[2]^|[ H]|[2]_|[O ]|[m]h"));
 	}
 
 	@Test
 	public void GivenInlineHtmlNestedInEmphasis_WhenVisit_ThenCombineFormatting() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("**bold <EM>both</EM>** <strong><em>html</em></strong>");
+		// GIVEN
+		String markdown = "**bold <EM>both</EM>** <strong><em>html</em></strong>";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(format(paragraph), equalTo("[bold ]b|[both]ib|[ ]|[html]ib"));
 	}
 
 	@Test
 	public void GivenUnbalancedInlineHtml_WhenVisit_ThenDoNotLeakToNextBlock() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("Text with <b>unclosed bold.\n\n</i>stray close and plain");
+		// GIVEN
+		String markdown = "Text with <b>unclosed bold.\n\n</i>stray close and plain";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(format(paragraph), equalTo("[stray close and plain]"));
 	}
 
 	@Test
 	public void GivenInlineHtmlLineBreaks_WhenVisit_ThenAddBreaks() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("line<br>next<BR />end");
+		// GIVEN
+		String markdown = "line<br>next<BR />end";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(paragraph.getText(), equalTo("line\nnext\nend"));
 	}
 
 	@Test
 	public void GivenInlineHtmlAnchor_WhenVisit_ThenCreateHyperlink() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("see <a href=\"https://x.org/?a=1&amp;b=2\" title=\"x\">site</a> now");
+		// GIVEN
+		String markdown = "see <a href=\"https://x.org/?a=1&amp;b=2\" title=\"x\">site</a> now";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(paragraph.getText(), equalTo("see site now"));
 		XWPFHyperlinkRun link = (XWPFHyperlinkRun) paragraph.getRuns().get(1);
 		assertThat(link.text(), equalTo("site"));
@@ -109,10 +136,13 @@ public class DocxVisitorInlineTest {
 
 	@Test
 	public void GivenInlineHtmlCommentAndUnsupportedTags_WhenVisit_ThenKeepTextOnly() throws Exception {
-		// when
-		XWPFParagraph paragraph = lastParagraph("a <!-- note --> <span class=\"x\">b</span> <img src=\"x.png\"/> c");
+		// GIVEN
+		String markdown = "a <!-- note --> <span class=\"x\">b</span> <img src=\"x.png\"/> c";
 
-		// then
+		// WHEN
+		XWPFParagraph paragraph = lastParagraph(markdown);
+
+		// THEN
 		assertThat(paragraph.getText(), equalTo("a  b  c"));
 		assertThat(format(paragraph).replaceAll("[^]|]+]", ""), equalTo("||||"));
 	}

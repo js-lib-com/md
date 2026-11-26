@@ -50,39 +50,51 @@ public class XlsxInlineFormattingTest {
 
 	@Test
 	public void GivenInlineHtmlFormattingTags_WhenExecute_ThenApplyFontRuns() throws Exception {
-		// when
-		XSSFCell cell = cell("a <b>bold</b> <i>it</i> <u>u</u> <s>s</s> <code>c</code> x<sup>2</sup> H<sub>2</sub>O");
+		// GIVEN
+		String content = "a <b>bold</b> <i>it</i> <u>u</u> <s>s</s> <code>c</code> x<sup>2</sup> H<sub>2</sub>O";
 
-		// then
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
 		assertThat(cell.getStringCellValue(), equalTo("a bold it u s c x2 H2O"));
 		assertThat(runs(cell), equalTo("[a ]|[bold]b|[ ]|[it]i|[ ]|[u]u|[ ]|[s]s|[ ]|[c]c|[ x]|[2]^|[ H]|[2]_|[O]"));
 	}
 
 	@Test
 	public void GivenMarkdownEmphasisAndInlineCode_WhenExecute_ThenApplyFontRuns() throws Exception {
-		// when
-		XSSFCell cell = cell("**bold <em>both</em>** and `code`");
+		// GIVEN
+		String content = "**bold <em>both</em>** and `code`";
 
-		// then
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
 		assertThat(runs(cell), equalTo("[bold ]b|[both]bi|[ and ]|[code]c"));
 	}
 
 	@Test
 	public void GivenLineBreaks_WhenExecute_ThenWriteNewLinesAndWrapText() throws Exception {
-		// when
-		XSSFCell cell = cell("line<br>next<br/>end");
+		// GIVEN
+		String content = "line<br>next<br/>end";
 
-		// then
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
 		assertThat(cell.getStringCellValue(), equalTo("line\nnext\nend"));
 		assertThat(cell.getCellStyle().getWrapText(), equalTo(true));
 	}
 
 	@Test
 	public void GivenPlainText_WhenExecute_ThenDoNotWrapNorApplyFontRuns() throws Exception {
-		// when
-		XSSFCell cell = cell("plain <span>text</span>");
+		// GIVEN
+		String content = "plain <span>text</span>";
 
-		// then
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
 		assertThat(cell.getStringCellValue(), equalTo("plain text"));
 		assertThat(cell.getRichStringCellValue().numFormattingRuns(), equalTo(0));
 		assertThat(cell.getCellStyle().getWrapText(), equalTo(false));
@@ -90,10 +102,13 @@ public class XlsxInlineFormattingTest {
 
 	@Test
 	public void GivenAnchorAndMarkdownLinks_WhenExecute_ThenSetFirstLinkAsCellHyperlink() throws Exception {
-		// when
-		XSSFCell cell = cell("see <a href=\"https://x.org/?a=1&amp;b=2\">site</a> or [other](https://y.org)");
+		// GIVEN
+		String content = "see <a href=\"https://x.org/?a=1&amp;b=2\">site</a> or [other](https://y.org)";
 
-		// then
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
 		assertThat(cell.getStringCellValue(), equalTo("see site or other"));
 		assertThat(cell.getHyperlink().getAddress(), equalTo("https://x.org/?a=1&b=2"));
 		assertThat(runs(cell), equalTo("[see ]|[site]l|[ or ]|[other]l"));
@@ -101,11 +116,13 @@ public class XlsxInlineFormattingTest {
 
 	@Test
 	public void GivenUnbalancedTags_WhenExecute_ThenDoNotLeakToNextCell() throws Exception {
-		// when
+		// GIVEN
 		writeTable("|<b>open|plain|\n|-|-|\n|</i>stray|<b>bold</b>|\n");
+
+		// WHEN
 		XSSFSheet sheet = sheet();
 
-		// then
+		// THEN
 		assertThat(runs(sheet.getRow(0).getCell(1)), equalTo("[plain]"));
 		assertThat(runs(sheet.getRow(1).getCell(0)), equalTo("[stray]"));
 		assertThat(sheet.getRow(1).getCell(0).getHyperlink(), nullValue());
@@ -113,11 +130,13 @@ public class XlsxInlineFormattingTest {
 
 	@Test
 	public void GivenFormattedHeaderCell_WhenExecute_ThenKeepHeaderFontColor() throws Exception {
-		// when
+		// GIVEN
 		writeTable("|<b>Name</b>|Value|\n|-|-|\n|a|1|\n");
+
+		// WHEN
 		XSSFCell cell = sheet().getRow(0).getCell(0);
 
-		// then
+		// THEN
 		XSSFFont font = cell.getRichStringCellValue().getFontOfFormattingRun(0);
 		assertThat(font.getBold(), equalTo(true));
 		assertThat(font.getColor(), equalTo(IndexedColors.WHITE.getIndex()));
@@ -125,10 +144,13 @@ public class XlsxInlineFormattingTest {
 
 	@Test
 	public void GivenPartlyHighlightedText_WhenExecute_ThenFillCellAndKeepTextPlain() throws Exception {
-		// when
-		XSSFCell cell = cell("note: <mark>important</mark> text");
+		// GIVEN
+		String content = "note: <mark>important</mark> text";
 
-		// then
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
 		assertThat(cell.getStringCellValue(), equalTo("note: important text"));
 		assertThat(runs(cell), equalTo("[note: important text]"));
 		assertThat(cell.getCellStyle().getFillPattern(), equalTo(FillPatternType.SOLID_FOREGROUND));
@@ -138,10 +160,13 @@ public class XlsxInlineFormattingTest {
 
 	@Test
 	public void GivenHighlightedBoldTextWithLineBreak_WhenExecute_ThenFillWrapAndKeepBold() throws Exception {
-		// when
-		XSSFCell cell = cell("<mark><b>bold</b><br>line</mark>");
+		// GIVEN
+		String content = "<mark><b>bold</b><br>line</mark>";
 
-		// then
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
 		assertThat(runs(cell), equalTo("[bold]b|[\nline]"));
 		assertThat(cell.getCellStyle().getFillForegroundColor(), equalTo(IndexedColors.YELLOW.getIndex()));
 		assertThat(cell.getCellStyle().getWrapText(), equalTo(true));
@@ -149,30 +174,38 @@ public class XlsxInlineFormattingTest {
 
 	@Test
 	public void GivenHighlightedHeaderCell_WhenExecute_ThenKeepHeaderFill() throws Exception {
-		// when
+		// GIVEN
 		writeTable("|<mark>Name</mark>|Value|\n|-|-|\n|a|1|\n");
+
+		// WHEN
 		XSSFCell cell = sheet().getRow(0).getCell(0);
 
-		// then
+		// THEN
 		assertThat(cell.getCellStyle().getFillForegroundColor(), equalTo(IndexedColors.TEAL.getIndex()));
 	}
 
 	@Test
 	public void GivenNotHighlightedCell_WhenExecute_ThenDoNotFill() throws Exception {
-		// when
-		XSSFCell cell = cell("plain <b>bold</b>");
+		// GIVEN
+		String content = "plain <b>bold</b>";
 
-		// then
+		// WHEN
+		XSSFCell cell = cell(content);
+
+		// THEN
 		assertThat(cell.getCellStyle().getFillPattern(), equalTo(FillPatternType.NO_FILL));
 	}
 
 	@Test
 	public void GivenEmptyCell_WhenExecute_ThenLeaveBlank() throws Exception {
-		// when
+		// GIVEN
 		writeTable("|Name|Value|\n|-|-|\n|a| <!-- note --> |\n");
 
-		// then
-		assertThat(sheet().getRow(1).getCell(1).getCellType(), equalTo(CellType.BLANK));
+		// WHEN
+		XSSFCell cell = sheet().getRow(1).getCell(1);
+
+		// THEN
+		assertThat(cell.getCellType(), equalTo(CellType.BLANK));
 	}
 
 	// --------------------------------------------------------------------------------------------

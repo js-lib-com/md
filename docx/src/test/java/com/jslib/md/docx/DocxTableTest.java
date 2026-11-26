@@ -3,7 +3,9 @@ package com.jslib.md.docx;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.Assert.assertThrows;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -43,13 +45,14 @@ public class DocxTableTest {
 
 	@Test
 	public void GivenAutoFit_WhenVisitTable_ThenSetPercentWidthsAndFixedLayout() throws Exception {
-		// given
+		// GIVEN
 		properties.setProperty("table.auto.fit", "true");
+		String markdown = TABLE;
 
-		// when
-		XWPFTable table = table(TABLE);
+		// WHEN
+		XWPFTable table = table(markdown);
 
-		// then
+		// THEN
 		assertThat(table.getCTTbl().getTblPr().getTblLayout().getType(), equalTo(STTblLayoutType.FIXED));
 		for (XWPFTableRow row : table.getRows()) {
 			assertThat(cellWidths(row), contains("pct:714", "pct:4286"));
@@ -65,14 +68,15 @@ public class DocxTableTest {
 
 	@Test
 	public void GivenAutoFitWithMinWidth_WhenVisitTable_ThenRaiseNarrowColumn() throws Exception {
-		// given
+		// GIVEN
 		properties.setProperty("table.auto.fit", "true");
 		properties.setProperty("table.column.min.width", "25");
+		String markdown = TABLE;
 
-		// when
-		XWPFTable table = table(TABLE);
+		// WHEN
+		XWPFTable table = table(markdown);
 
-		// then
+		// THEN
 		assertThat(cellWidths(table.getRow(1)), contains("pct:1250", "pct:3750"));
 	}
 
@@ -81,50 +85,69 @@ public class DocxTableTest {
 
 	@Test
 	public void GivenAutoFitWithDefaultOutliers_WhenVisitTable_ThenIgnoreOutlierCell() throws Exception {
-		// given
+		// GIVEN
 		properties.setProperty("table.auto.fit", "true");
+		String markdown = TABLE_WITH_OUTLIER;
 
-		// when
-		XWPFTable table = table(TABLE_WITH_OUTLIER);
+		// WHEN
+		XWPFTable table = table(markdown);
 
-		// then: weights 10 and 6.67, that is, 60% and 40%
+		// THEN
+		// weights 10 and 6.67, that is, 60% and 40%
 		assertThat(cellWidths(table.getRow(1)), contains("pct:3000", "pct:2000"));
 	}
 
 	@Test
 	public void GivenAutoFitWithZeroOutliers_WhenVisitTable_ThenUseAllCells() throws Exception {
-		// given
+		// GIVEN
 		properties.setProperty("table.auto.fit", "true");
 		properties.setProperty("table.column.outliers", "0");
+		String markdown = TABLE_WITH_OUTLIER;
 
-		// when
-		XWPFTable table = table(TABLE_WITH_OUTLIER);
+		// WHEN
+		XWPFTable table = table(markdown);
 
-		// then: weights 9.8 and 52.2, that is, 15.81% and 84.19%
+		// THEN
+		// weights 9.8 and 52.2, that is, 15.81% and 84.19%
 		assertThat(cellWidths(table.getRow(1)), contains("pct:790", "pct:4210"));
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void GivenInvalidOutliersPercent_WhenCreateProjectProperties_ThenThrow() {
+		// GIVEN
 		properties.setProperty("table.column.outliers", "60");
-		new ProjectProperties(properties);
+
+		// WHEN
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new ProjectProperties(properties));
+
+		// THEN
+		assertThat(exception.getMessage(), notNullValue());
 	}
 
 	@Test
 	public void GivenAutoFitDisabled_WhenVisitTable_ThenKeepNoWrapColumns() throws Exception {
-		// when
-		XWPFTable table = table(TABLE);
+		// GIVEN
+		String markdown = TABLE;
 
-		// then
+		// WHEN
+		XWPFTable table = table(markdown);
+
+		// THEN
 		assertThat(table.getCTTbl().getTblPr().getTblLayout(), nullValue());
 		assertThat(table.getRow(1).getCell(0).getCTTc().getTcPr().isSetNoWrap(), equalTo(true));
 		assertThat(table.getRow(1).getCell(0).getCTTc().getTcPr().isSetTcW(), equalTo(false));
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void GivenInvalidMinWidth_WhenCreateProjectProperties_ThenThrow() {
+		// GIVEN
 		properties.setProperty("table.column.min.width", "150");
-		new ProjectProperties(properties);
+
+		// WHEN
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new ProjectProperties(properties));
+
+		// THEN
+		assertThat(exception.getMessage(), notNullValue());
 	}
 
 	private XWPFTable table(String markdown) throws IOException, XmlException {

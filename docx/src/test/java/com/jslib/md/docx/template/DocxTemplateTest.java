@@ -27,70 +27,76 @@ public class DocxTemplateTest {
 
 	@Test
 	public void GivenDefinedVariable_WhenInject_ThenReplaceWithValue() {
-		// given
+		// GIVEN
 		properties.setProperty("document.title", "User Manual");
+		String source = "<w:t>{{document.title}}</w:t>";
 
-		// when
-		String xml = DocxTemplate.inject("<w:t>{{document.title}}</w:t>", properties);
+		// WHEN
+		String xml = DocxTemplate.inject(source, properties);
 
-		// then
+		// THEN
 		assertThat(xml, equalTo("<w:t>User Manual</w:t>"));
 	}
 
 	@Test
 	public void GivenMissingVariable_WhenInject_ThenReplaceWithName() {
-		// when
-		String xml = DocxTemplate.inject("<w:t>{{document.title}}</w:t>", properties);
+		// GIVEN
+		String source = "<w:t>{{document.title}}</w:t>";
 
-		// then
+		// WHEN
+		String xml = DocxTemplate.inject(source, properties);
+
+		// THEN
 		assertThat(xml, equalTo("<w:t>document.title</w:t>"));
 	}
 
 	@Test
 	public void GivenSingleBraces_WhenInject_ThenKeepUnchanged() {
-		// given
+		// GIVEN
 		String source = "<ds:datastoreItem ds:itemID=\"{55AF091B-3C7A-41E3-B477-F2FDAA23CFDA}\"/> {x} } {";
 
-		// when
+		// WHEN
 		String xml = DocxTemplate.inject(source, properties);
 
-		// then
+		// THEN
 		assertThat(xml, equalTo(source));
 	}
 
 	@Test
 	public void GivenXmlSpecialCharsInValue_WhenInject_ThenEscape() {
-		// given
+		// GIVEN
 		properties.setProperty("document.author", "R&D <team> \"$1\"");
+		String source = "<w:t>{{document.author}}</w:t>";
 
-		// when
-		String xml = DocxTemplate.inject("<w:t>{{document.author}}</w:t>", properties);
+		// WHEN
+		String xml = DocxTemplate.inject(source, properties);
 
-		// then
+		// THEN
 		assertThat(xml, equalTo("<w:t>R&amp;D &lt;team&gt; &quot;$1&quot;</w:t>"));
 	}
 
 	@Test
 	public void GivenNonAsciiValue_WhenInject_ThenPreserve() {
-		// given
+		// GIVEN
 		properties.setProperty("document.title", "Manual de utilizare ăâîșț €");
+		String source = "{{document.title}}";
 
-		// when
-		String xml = DocxTemplate.inject("{{document.title}}", properties);
+		// WHEN
+		String xml = DocxTemplate.inject(source, properties);
 
-		// then
+		// THEN
 		assertThat(xml, equalTo("Manual de utilizare ăâîșț €"));
 	}
 
 	@Test
 	public void GivenTemplateResource_WhenCreate_ThenInjectVariablesAndPreserveGuids() throws IOException {
-		// given
+		// GIVEN
 		properties.setProperty("document.title", "Manual ăâîșț");
 
-		// when
+		// WHEN
 		DocxTemplate template = new DocxTemplate(properties);
 
-		// then
+		// THEN
 		Map<String, String> entries = entries(template.getInputStream());
 		assertThat(entries.get("word/document.xml"), containsString("Manual ăâîșț"));
 		assertThat(entries.get("word/document.xml"), not(containsString("{{document.title}}")));
@@ -99,17 +105,17 @@ public class DocxTemplateTest {
 
 	@Test
 	public void GivenAllDocumentProperties_WhenCreate_ThenFillDocumentMetadataAndLeaveNoPlaceholders() throws IOException {
-		// given
+		// GIVEN
 		for (String name : new String[] { "title", "subtitle", "author", "date", "abstract", "version" }) {
 			properties.setProperty("document." + name, "value-" + name);
 		}
 		properties.setProperty("company.name", "value-company-name");
 		properties.setProperty("company.logotype", "value-company-logotype");
 
-		// when
+		// WHEN
 		DocxTemplate template = new DocxTemplate(properties);
 
-		// then
+		// THEN
 		Map<String, String> entries = entries(template.getInputStream());
 		assertThat(entries.get("docProps/core.xml"), containsString("<dc:title>value-title</dc:title>"));
 		assertThat(entries.get("docProps/core.xml"), containsString("<dc:subject>value-subtitle</dc:subject>"));

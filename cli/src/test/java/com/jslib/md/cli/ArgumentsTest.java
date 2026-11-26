@@ -3,6 +3,7 @@ package com.jslib.md.cli;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.Assert.assertThrows;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,57 +32,110 @@ public class ArgumentsTest {
 
 	@Test
 	public void GivenCommandOnly_WhenParse_ThenUseCurrentDirectory() throws UsageException {
-		Arguments arguments = Arguments.parse("docx");
+		// GIVEN
+		String command = "docx";
+
+		// WHEN
+		Arguments arguments = Arguments.parse(command);
+
+		// THEN
 		assertThat(arguments.command, equalTo(Command.DOCX));
 		assertThat(arguments.documentDir, equalTo(new File(".")));
 	}
 
 	@Test
 	public void GivenCommandDirectoryAndOptionsInAnyOrder_WhenParse_ThenRecognizeAll() throws UsageException {
-		Arguments arguments = Arguments.parse("-v", "xlsx", dir.getPath());
-		assertThat(arguments.command, equalTo(Command.XLSX));
-		assertThat(arguments.documentDir, equalTo(dir));
-		assertThat(arguments.verbose, equalTo(true));
+		// GIVEN
+		String[] optionCommandDirectory = { "-v", "xlsx", dir.getPath() };
+		String[] commandDirectoryOption = { "translate", dir.getPath(), "--quiet" };
 
-		arguments = Arguments.parse("translate", dir.getPath(), "--quiet");
-		assertThat(arguments.command, equalTo(Command.TRANSLATE));
-		assertThat(arguments.quiet, equalTo(true));
+		// WHEN
+		Arguments xlsxArguments = Arguments.parse(optionCommandDirectory);
+		Arguments translateArguments = Arguments.parse(commandDirectoryOption);
+
+		// THEN
+		assertThat(xlsxArguments.command, equalTo(Command.XLSX));
+		assertThat(xlsxArguments.documentDir, equalTo(dir));
+		assertThat(xlsxArguments.verbose, equalTo(true));
+
+		assertThat(translateArguments.command, equalTo(Command.TRANSLATE));
+		assertThat(translateArguments.quiet, equalTo(true));
 	}
 
 	@Test
 	public void GivenLegacyCommandOption_WhenParse_ThenAccept() throws UsageException {
-		assertThat(Arguments.parse("--docx", dir.getPath()).command, equalTo(Command.DOCX));
-		assertThat(Arguments.parse("--xlsx").command, equalTo(Command.XLSX));
+		// GIVEN
+		String[] docxOptionWithDirectory = { "--docx", dir.getPath() };
+		String xlsxOption = "--xlsx";
+
+		// WHEN
+		Arguments docxArguments = Arguments.parse(docxOptionWithDirectory);
+		Arguments xlsxArguments = Arguments.parse(xlsxOption);
+
+		// THEN
+		assertThat(docxArguments.command, equalTo(Command.DOCX));
+		assertThat(xlsxArguments.command, equalTo(Command.XLSX));
 	}
 
 	@Test
 	public void GivenHelpOrVersion_WhenParse_ThenSkipValidation() throws UsageException {
-		assertThat(Arguments.parse("--help").help, equalTo(true));
-		assertThat(Arguments.parse("-h").command, nullValue());
-		assertThat(Arguments.parse("docx", "-h").command, equalTo(Command.DOCX));
-		assertThat(Arguments.parse("docx", "missing-directory", "--help").help, equalTo(true));
-		assertThat(Arguments.parse("-V").version, equalTo(true));
+		// GIVEN
+		String[] longHelp = { "--help" };
+		String[] shortHelp = { "-h" };
+		String[] commandShortHelp = { "docx", "-h" };
+		String[] helpWithMissingDirectory = { "docx", "missing-directory", "--help" };
+		String[] shortVersion = { "-V" };
+
+		// WHEN
+		Arguments longHelpArguments = Arguments.parse(longHelp);
+		Arguments shortHelpArguments = Arguments.parse(shortHelp);
+		Arguments commandShortHelpArguments = Arguments.parse(commandShortHelp);
+		Arguments helpWithMissingDirectoryArguments = Arguments.parse(helpWithMissingDirectory);
+		Arguments shortVersionArguments = Arguments.parse(shortVersion);
+
+		// THEN
+		assertThat(longHelpArguments.help, equalTo(true));
+		assertThat(shortHelpArguments.command, nullValue());
+		assertThat(commandShortHelpArguments.command, equalTo(Command.DOCX));
+		assertThat(helpWithMissingDirectoryArguments.help, equalTo(true));
+		assertThat(shortVersionArguments.version, equalTo(true));
 	}
 
 	@Test
 	public void GivenInvalidArguments_WhenParse_ThenThrowWithMessage() {
-		assertUsage("missing command");
-		assertUsage("missing command", "-v");
-		assertUsage("unknown command 'pdf'", "pdf");
-		assertUsage("unknown option '--pdf'", "docx", "--pdf");
-		assertUsage("unexpected argument 'extra'", "docx", ".", "extra");
-		assertUsage("only one command is allowed", "--docx", "--xlsx");
-		assertUsage("options --verbose and --quiet cannot be used together", "docx", "-v", "-q");
-		assertUsage("document directory not found 'missing-directory'", "docx", "missing-directory");
+		// GIVEN
+		String[] noArguments = {};
+		String[] optionOnly = { "-v" };
+		String[] unknownCommand = { "pdf" };
+		String[] unknownOption = { "docx", "--pdf" };
+		String[] extraArgument = { "docx", ".", "extra" };
+		String[] twoCommands = { "--docx", "--xlsx" };
+		String[] verboseAndQuiet = { "docx", "-v", "-q" };
+		String[] missingDirectory = { "docx", "missing-directory" };
+
+		// WHEN
+		String noArgumentsMessage = usageMessage(noArguments);
+		String optionOnlyMessage = usageMessage(optionOnly);
+		String unknownCommandMessage = usageMessage(unknownCommand);
+		String unknownOptionMessage = usageMessage(unknownOption);
+		String extraArgumentMessage = usageMessage(extraArgument);
+		String twoCommandsMessage = usageMessage(twoCommands);
+		String verboseAndQuietMessage = usageMessage(verboseAndQuiet);
+		String missingDirectoryMessage = usageMessage(missingDirectory);
+
+		// THEN
+		assertThat(noArgumentsMessage, equalTo("missing command"));
+		assertThat(optionOnlyMessage, equalTo("missing command"));
+		assertThat(unknownCommandMessage, equalTo("unknown command 'pdf'"));
+		assertThat(unknownOptionMessage, equalTo("unknown option '--pdf'"));
+		assertThat(extraArgumentMessage, equalTo("unexpected argument 'extra'"));
+		assertThat(twoCommandsMessage, equalTo("only one command is allowed"));
+		assertThat(verboseAndQuietMessage, equalTo("options --verbose and --quiet cannot be used together"));
+		assertThat(missingDirectoryMessage, equalTo("document directory not found 'missing-directory'"));
 	}
 
-	private static void assertUsage(String message, String... args) {
-		try {
-			Arguments.parse(args);
-		} catch (UsageException e) {
-			assertThat(e.getMessage(), equalTo(message));
-			return;
-		}
-		throw new AssertionError("Expected usage exception: " + message);
+	private static String usageMessage(String... args) {
+		UsageException exception = assertThrows(UsageException.class, () -> Arguments.parse(args));
+		return exception.getMessage();
 	}
 }

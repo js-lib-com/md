@@ -46,10 +46,14 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenTemplateNumbering_WhenCreateVisitor_ThenNumberingIdsAreUnique() throws IOException, XmlException {
-		// when
-		generate("- item");
+		// GIVEN
+		String markdown = "- item";
 
-		// then: identifiers are still unique after a save / reload round trip
+		// WHEN
+		generate(markdown);
+
+		// THEN
+		// identifiers are still unique after a save / reload round trip
 		XWPFDocument reloaded = reload(document);
 		List<BigInteger> abstractIds = reloaded.getNumbering().getAbstractNums().stream().map(a -> a.getCTAbstractNum().getAbstractNumId()).collect(Collectors.toList());
 		List<BigInteger> numIds = reloaded.getNumbering().getNums().stream().map(n -> n.getCTNum().getNumId()).collect(Collectors.toList());
@@ -59,10 +63,13 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenNestedBulletList_WhenVisit_ThenSetLevelsAndBulletFormat() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("- one\n  - one.one\n    - one.one.one\n- two");
+		// GIVEN
+		String markdown = "- one\n  - one.one\n    - one.one.one\n- two";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		assertThat(texts(paragraphs), contains("one", "one.one", "one.one.one", "two"));
 		assertThat(levels(paragraphs), contains(0, 1, 2, 0));
 		assertThat(numIds(paragraphs).size(), equalTo(1));
@@ -71,10 +78,13 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenOrderedLists_WhenVisit_ThenUseDecimalFormatAndRestartEveryList() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("1. first\n2. second\n\nParagraph.\n\n3. third\n4. fourth");
+		// GIVEN
+		String markdown = "1. first\n2. second\n\nParagraph.\n\n3. third\n4. fourth";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		List<XWPFParagraph> items = Arrays.asList(paragraphs.get(0), paragraphs.get(1), paragraphs.get(3), paragraphs.get(4));
 		assertThat(texts(items), contains("first", "second", "third", "fourth"));
 		assertThat(format(items.get(0)), equalTo(STNumberFormat.DECIMAL));
@@ -86,10 +96,13 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenOrderedListNestedInBulletList_WhenVisit_ThenUseOrderedNumberingOnNestedLevel() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("- bullet\n  1. ordered\n  2. ordered\n- bullet");
+		// GIVEN
+		String markdown = "- bullet\n  1. ordered\n  2. ordered\n- bullet";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		assertThat(levels(paragraphs), contains(0, 1, 1, 0));
 		assertThat(format(paragraphs.get(0)), equalTo(STNumberFormat.BULLET));
 		assertThat(format(paragraphs.get(1)), equalTo(STNumberFormat.LOWER_LETTER));
@@ -98,10 +111,13 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenFencedCodeAsFirstListItemBlock_WhenVisit_ThenRenderCode() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("- ```\n  code line\n  ```\n- item");
+		// GIVEN
+		String markdown = "- ```\n  code line\n  ```\n- item";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		List<String> texts = texts(paragraphs);
 		assertThat(texts.contains("code line"), equalTo(true));
 		XWPFParagraph code = paragraphs.get(texts.indexOf("code line"));
@@ -110,20 +126,26 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenFencedCodeAfterListItemText_WhenVisit_ThenRenderCodeIndented() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("- step:\n\n  ```\n  code line\n  ```\n");
+		// GIVEN
+		String markdown = "- step:\n\n  ```\n  code line\n  ```\n";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		assertThat(texts(paragraphs).subList(0, 2), contains("step:", "code line"));
 		assertThat(paragraphs.get(1).getIndentationLeft(), equalTo(DocxNumbering.textIndent(0)));
 	}
 
 	@Test
 	public void GivenEmptyListItem_WhenVisit_ThenFollowingParagraphIsNotListItem() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("-\n\nParagraph.");
+		// GIVEN
+		String markdown = "-\n\nParagraph.";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		XWPFParagraph last = paragraphs.get(paragraphs.size() - 1);
 		assertThat(last.getText(), equalTo("Paragraph."));
 		assertThat(last.getNumID(), equalTo(null));
@@ -131,12 +153,16 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenIndentedCodeBlock_WhenVisit_ThenRenderLikeFencedCode() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> indented = generate("Text:\n\n    int x = 1;\n      return x;\n");
-		beforeTest();
-		List<XWPFParagraph> fenced = generate("Text:\n\n```\nint x = 1;\n  return x;\n```\n");
+		// GIVEN
+		String indentedMarkdown = "Text:\n\n    int x = 1;\n      return x;\n";
+		String fencedMarkdown = "Text:\n\n```\nint x = 1;\n  return x;\n```\n";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> indented = generate(indentedMarkdown);
+		beforeTest();
+		List<XWPFParagraph> fenced = generate(fencedMarkdown);
+
+		// THEN
 		assertThat(texts(indented), equalTo(texts(fenced)));
 		assertThat(texts(indented).subList(1, 3), contains("int x = 1;", "  return x;"));
 		assertThat(indented.get(1).getStyle(), equalTo("NoSpacing"));
@@ -146,10 +172,13 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenThematicBreak_WhenVisit_ThenAddParagraphWithBottomBorder() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("Before.\n\n***\n\nAfter.");
+		// GIVEN
+		String markdown = "Before.\n\n***\n\nAfter.";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		assertThat(texts(paragraphs), contains("Before.", "", "After."));
 		assertThat(paragraphs.get(1).getBorderBottom(), equalTo(Borders.SINGLE));
 		assertThat(paragraphs.get(2).getBorderBottom(), equalTo(Borders.NONE));
@@ -157,19 +186,25 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenHtmlComment_WhenVisit_ThenIgnore() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("Before.\n\n<!-- author note\nspanning lines -->\n\nAfter.");
+		// GIVEN
+		String markdown = "Before.\n\n<!-- author note\nspanning lines -->\n\nAfter.";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		assertThat(texts(paragraphs), contains("Before.", "After."));
 	}
 
 	@Test
 	public void GivenHtmlPageBreak_WhenVisit_ThenAddPageBreak() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("Before.\n\n<div style=\"page-break-after: always\"></div>\n\nAfter.");
+		// GIVEN
+		String markdown = "Before.\n\n<div style=\"page-break-after: always\"></div>\n\nAfter.";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		assertThat(paragraphs, hasSize(3));
 		CTBr br = paragraphs.get(1).getRuns().get(0).getCTR().getBrArray(0);
 		assertThat(br.getType(), equalTo(STBrType.PAGE));
@@ -177,19 +212,25 @@ public class DocxVisitorBlockTest {
 
 	@Test
 	public void GivenHtmlBlock_WhenVisit_ThenRenderPlainTextPerBlockElement() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("<div align=\"center\">\n<p>First <b>bold</b>\nline &amp; more</p>\n<p>Second&nbsp;line</p>\n</div>\n");
+		// GIVEN
+		String markdown = "<div align=\"center\">\n<p>First <b>bold</b>\nline &amp; more</p>\n<p>Second&nbsp;line</p>\n</div>\n";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		assertThat(texts(paragraphs), contains("First bold line & more", "Second line"));
 	}
 
 	@Test
 	public void GivenHeadingLevelsFiveAndSix_WhenVisit_ThenUseHeadingStylesAndNumbering() throws IOException, XmlException {
-		// when
-		List<XWPFParagraph> paragraphs = generate("# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6");
+		// GIVEN
+		String markdown = "# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6";
 
-		// then
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
 		assertThat(paragraphs.stream().map(XWPFParagraph::getStyle).collect(Collectors.toList()), contains("Heading1", "Heading2", "Heading3", "Heading4", "Heading5", "Heading6"));
 		assertThat(levels(paragraphs), contains(0, 1, 2, 3, 4, 5));
 		assertThat(lvlText(paragraphs.get(5)), equalTo("%1.%2.%3.%4.%5.%6"));

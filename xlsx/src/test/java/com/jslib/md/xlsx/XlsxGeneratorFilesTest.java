@@ -44,45 +44,45 @@ public class XlsxGeneratorFilesTest {
 
 	@Test
 	public void GivenFormattedAndEmptyCells_WhenExecute_ThenWritePlainTextAndBlankCells() throws Exception {
-		// given
+		// GIVEN
 		write("table.md", "|Name|Description|Note|\n|-|-|-|\n|**Bold** name|See [site](https://x.org) and `code`||\n");
 
-		// when
-        Row row;
-        try (Workbook workbook = execute()) {
-            row = workbook.getSheet("table").getRow(1);
-        }
+		// WHEN
+		Row row;
+		try (Workbook workbook = execute()) {
+			row = workbook.getSheet("table").getRow(1);
+		}
 
-		// then
-        assertThat(row.getCell(0).getStringCellValue(), equalTo("Bold name"));
+		// THEN
+		assertThat(row.getCell(0).getStringCellValue(), equalTo("Bold name"));
 		assertThat(row.getCell(1).getStringCellValue(), equalTo("See site and code"));
 		assertThat(row.getCell(2).getCellType(), equalTo(CellType.BLANK));
 	}
 
 	@Test
 	public void GivenFileWithoutTable_WhenExecute_ThenSkipFile() throws Exception {
-		// given
+		// GIVEN
 		write("notes.md", "# Notes\n\nNo table here.\n");
 		write("table.md", TABLE);
 
-		// when
+		// WHEN
 		Workbook workbook = execute();
 
-		// then
+		// THEN
 		assertThat(sheetNames(workbook), contains("table"));
 	}
 
 	@Test
 	public void GivenLongAndInvalidFileNames_WhenExecute_ThenCreateValidUniqueSheetNamesInFileOrder() throws Exception {
-		// given
+		// GIVEN
 		write("c[1].md", TABLE);
 		write(LONG_NAME + "-two.md", TABLE);
 		write(LONG_NAME + "-one.md", TABLE);
 
-		// when
+		// WHEN
 		Workbook workbook = execute();
 
-		// then
+		// THEN
 		String truncated = LONG_NAME.substring(0, 31);
 		assertThat(sheetNames(workbook), contains(truncated, truncated.substring(0, 27) + " (2)", "c_1_"));
 	}

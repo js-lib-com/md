@@ -1,5 +1,8 @@
 package com.jslib.md.xlsx;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+
 import java.io.File;
 
 import org.junit.Before;
@@ -14,7 +17,7 @@ public class XlsxGeneratorTest {
 	}
 
 	@Test
-	public void Given_WhenGeneratorExecute_Then() throws Exception {
+	public void GivenMarkdownDirectory_WhenExecute_ThenWriteDocumentXlsx() throws Exception {
 		// GIVEN
 		File documentDir = new File("src/test/resources/xlsx");
 
@@ -22,5 +25,7 @@ public class XlsxGeneratorTest {
 		generator.execute(documentDir);
 
 		// THEN
+		// no project properties, so default file name is used
+		assertThat(new File(documentDir, "document.xlsx").isFile(), equalTo(true));
 	}
 }

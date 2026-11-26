@@ -2,6 +2,8 @@ package com.jslib.md.docx;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertThrows;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,25 +45,40 @@ public class DocxGeneratorTest {
 
     @Test
     public void GivenDefaultLanguage_WhenSourceFiles_ThenExcludeTranslationsAndSortByName() throws IOException {
-        // when
-        List<String> names = names(DocxGenerator.sourceFiles(sourceDir, null, LANGUAGES));
+        // GIVEN
+        String defaultLanguage = null;
 
-        // then
+        // WHEN
+        File[] files = DocxGenerator.sourceFiles(sourceDir, defaultLanguage, LANGUAGES);
+
+        // THEN
+        List<String> names = names(files);
         assertThat(names, contains("01-intro.md", "02-install.md", "03-usage.md"));
     }
 
     @Test
     public void GivenLanguage_WhenSourceFiles_ThenIncludeOnlyLanguageFilesSortedByName() throws IOException {
-        // when
-        List<String> names = names(DocxGenerator.sourceFiles(sourceDir, "ro", LANGUAGES));
+        // GIVEN
+        String language = "ro";
 
-        // then
+        // WHEN
+        File[] files = DocxGenerator.sourceFiles(sourceDir, language, LANGUAGES);
+
+        // THEN
+        List<String> names = names(files);
         assertThat(names, contains("01-intro_ro.md", "02-install_ro.md", "03-usage_ro.md"));
     }
 
-    @Test(expected = IOException.class)
-    public void GivenMissingDirectory_WhenSourceFiles_ThenThrow() throws IOException {
-        DocxGenerator.sourceFiles(new File(sourceDir, "missing"), null, LANGUAGES);
+    @Test
+    public void GivenMissingDirectory_WhenSourceFiles_ThenThrow() {
+        // GIVEN
+        File missingDirectory = new File(sourceDir, "missing");
+
+        // WHEN
+        IOException exception = assertThrows(IOException.class, () -> DocxGenerator.sourceFiles(missingDirectory, null, LANGUAGES));
+
+        // THEN
+        assertThat(exception.getMessage(), notNullValue());
     }
 
     private static List<String> names(File[] files) {
