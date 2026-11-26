@@ -10,7 +10,9 @@ Document directory files:
                          document.category, document.comments,
                          document.status, document.version,
                          document.revision, document.language,
-                         document.company and document.manager
+                         document.company, document.manager and
+                         document.date, creation time if ISO date or
+                         date-time, e.g. 2026-11-26 or 2026-11-26T10:15:30
   project.properties     Optional project properties, see below
 
 Project properties:

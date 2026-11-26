@@ -121,10 +121,10 @@ public class WorkbookTest {
 	}
 
 	@Test
-	public void GivenCreationTime_WhenWrite_ThenWriteDocumentProperties() throws IOException {
+	public void GivenCreationAndModificationTime_WhenWrite_ThenWriteDocumentProperties() throws IOException {
 		// GIVEN
-		Instant created = Instant.parse("2026-11-26T10:15:30.500Z");
-		workbook.setCreated(created);
+		workbook.setCreated(Instant.parse("2026-11-26T10:15:30.500Z"));
+		workbook.setModified(Instant.parse("2026-11-27T08:00:00Z"));
 
 		// WHEN
 		POIXMLProperties properties = reload().getProperties();
@@ -133,7 +133,7 @@ public class WorkbookTest {
 		// time is stored with seconds precision
 		assertThat(properties.getCoreProperties().getCreator(), equalTo("mdt"));
 		assertThat(properties.getCoreProperties().getCreated().toInstant(), equalTo(Instant.parse("2026-11-26T10:15:30Z")));
-		assertThat(properties.getCoreProperties().getModified().toInstant(), equalTo(Instant.parse("2026-11-26T10:15:30Z")));
+		assertThat(properties.getCoreProperties().getModified().toInstant(), equalTo(Instant.parse("2026-11-27T08:00:00Z")));
 		assertThat(properties.getExtendedProperties().getApplication(), equalTo("mdt"));
 	}
 

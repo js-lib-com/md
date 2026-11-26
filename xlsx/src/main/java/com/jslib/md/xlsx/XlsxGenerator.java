@@ -7,6 +7,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -68,6 +74,16 @@ public class XlsxGenerator implements CommandHandler {
 			throw new IllegalArgumentException(String.format("Invalid document property document.revision=%s. Expected non-negative integer.", revision), e);
 		}
 		workbook.setLanguage(value(documentProperties, "document.language"));
+		String date = value(documentProperties, "document.date");
+		if (date != null) {
+			Instant created = parseDate(date);
+			if (created != null) {
+				workbook.setCreated(created);
+			} else {
+				// document date is free text for DOCX templates so it does not fail XLSX generation
+				log.warn("Ignore document.date={}, not an ISO date or date-time; workbook creation time is generation time.", date);
+			}
+		}
 		workbook.setCompany(value(documentProperties, "document.company"));
 		workbook.setManager(value(documentProperties, "document.manager"));
 		File[] markdownFiles = sourceDir.listFiles(file -> file.getName().endsWith(".md"));
@@ -109,6 +125,29 @@ public class XlsxGenerator implements CommandHandler {
 		log.info("Generate {}", targetFile);
 		try (FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 			workbook.write(outputStream);
+		}
+	}
+
+	/**
+	 * Parse ISO date, e.g. 2026-11-26, or date-time, e.g. 2026-11-26T10:15:30 or 2026-11-26T10:15:30+02:00. Date and
+	 * date-time without offset are in system time zone; date is at start of day. Return null if not parsable.
+	 */
+	static Instant parseDate(String date) {
+		ZoneId zone = ZoneId.systemDefault();
+		try {
+			return OffsetDateTime.parse(date).toInstant();
+		} catch (DateTimeParseException e) {
+			// try next format
+		}
+		try {
+			return LocalDateTime.parse(date).atZone(zone).toInstant();
+		} catch (DateTimeParseException e) {
+			// try next format
+		}
+		try {
+			return LocalDate.parse(date).atStartOfDay(zone).toInstant();
+		} catch (DateTimeParseException e) {
+			return null;
 		}
 	}
 

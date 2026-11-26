@@ -11,6 +11,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -463,6 +468,56 @@ public class XlsxGeneratorFilesTest {
 		// THEN
 		assertThat(missingLanguage, equalTo(Optional.empty()));
 		assertThat(blankLanguage, equalTo(Optional.empty()));
+	}
+
+	@Test
+	public void GivenIsoDocumentDates_WhenParseDate_ThenReturnInstant() {
+		// GIVEN
+		ZoneId zone = ZoneId.systemDefault();
+
+		// WHEN
+		Instant date = XlsxGenerator.parseDate("2026-11-26");
+		Instant localDateTime = XlsxGenerator.parseDate("2026-11-26T10:15:30");
+		Instant offsetDateTime = XlsxGenerator.parseDate("2026-11-26T10:15:30+02:00");
+
+		// THEN
+		// date and date-time without offset are in system time zone
+		assertThat(date, equalTo(LocalDate.of(2026, 11, 26).atStartOfDay(zone).toInstant()));
+		assertThat(localDateTime, equalTo(LocalDateTime.of(2026, 11, 26, 10, 15, 30).atZone(zone).toInstant()));
+		assertThat(offsetDateTime, equalTo(Instant.parse("2026-11-26T08:15:30Z")));
+	}
+
+	@Test
+	public void GivenDocumentDate_WhenExecute_ThenWriteItAsCreationTimeAndKeepModificationTime() throws Exception {
+		// GIVEN
+		write("document.properties", "document.date=2025-03-14T09:26:53+02:00\n");
+		write("table.md", TABLE);
+		Instant before = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+
+		// WHEN
+		POIXMLProperties.CoreProperties properties = coreProperties(execute());
+
+		// THEN
+		assertThat(properties.getCreated().toInstant(), equalTo(Instant.parse("2025-03-14T07:26:53Z")));
+		// modification time is generation time
+		assertThat(properties.getModified().toInstant().isBefore(before), equalTo(false));
+	}
+
+	@Test
+	public void GivenFreeTextOrMissingDocumentDate_WhenExecute_ThenUseGenerationTime() throws Exception {
+		// GIVEN
+		// free text date is valid for DOCX templates and does not fail generation
+		write("table.md", TABLE);
+		Instant before = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+		POIXMLProperties.CoreProperties missing = coreProperties(execute());
+		write("document.properties", "document.date=26 November 2026\n");
+
+		// WHEN
+		POIXMLProperties.CoreProperties freeText = coreProperties(execute());
+
+		// THEN
+		assertThat(missing.getCreated().toInstant().isBefore(before), equalTo(false));
+		assertThat(freeText.getCreated().toInstant().isBefore(before), equalTo(false));
 	}
 
 	private static POIXMLProperties.ExtendedProperties extendedProperties(Workbook workbook) {

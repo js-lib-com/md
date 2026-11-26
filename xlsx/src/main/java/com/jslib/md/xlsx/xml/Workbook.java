@@ -48,8 +48,12 @@ public final class Workbook {
 	private static final String CONTENT_TYPE_PREFIX = "application/vnd.openxmlformats-officedocument.spreadsheetml.";
 
 	private final List<Sheet> sheets = new ArrayList<>();
-	/** Creation time stored in document properties, with seconds precision as required by W3CDTF format. */
+	/**
+	 * Creation and modification time stored in document properties, with seconds precision as required by W3CDTF format.
+	 * Both default to workbook instance creation time.
+	 */
 	private Instant created = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+	private Instant modified = created;
 
 	/** Optional document properties, null if not set. Author is stored as creator and last modified by. */
 	private String author;
@@ -133,9 +137,14 @@ public final class Workbook {
 		this.manager = manager;
 	}
 
-	/** Override creation time, e.g. for reproducible output; default is workbook instance creation time. */
+	/** Override creation time, e.g. document date; default is workbook instance creation time. */
 	public void setCreated(Instant created) {
 		this.created = created.truncatedTo(ChronoUnit.SECONDS);
+	}
+
+	/** Override modification time, e.g. for reproducible output; default is workbook instance creation time. */
+	public void setModified(Instant modified) {
+		this.modified = modified.truncatedTo(ChronoUnit.SECONDS);
 	}
 
 	public Sheet createSheet(String name) {
@@ -288,12 +297,15 @@ public final class Workbook {
 		textElement(xml, CORE_NS, "version", version);
 		textElement(xml, CORE_NS, "revision", revision);
 		textElement(xml, DC_NS, "language", language);
-		for (String element : new String[] { "created", "modified" }) {
-			xml.writeStartElement(DCTERMS_NS, element);
-			xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");
-			xml.writeCharacters(DateTimeFormatter.ISO_INSTANT.format(created));
-			xml.writeEndElement();
-		}
+		timeElement(xml, "created", created);
+		timeElement(xml, "modified", modified);
+		xml.writeEndElement();
+	}
+
+	private static void timeElement(XMLStreamWriter xml, String name, Instant time) throws XMLStreamException {
+		xml.writeStartElement(DCTERMS_NS, name);
+		xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");
+		xml.writeCharacters(DateTimeFormatter.ISO_INSTANT.format(time));
 		xml.writeEndElement();
 	}
 
