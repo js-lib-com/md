@@ -60,6 +60,7 @@ public final class Workbook {
 	private String description;
 	private String status;
 	private String version;
+	private String revision;
 	private String company;
 	private String manager;
 
@@ -101,6 +102,19 @@ public final class Workbook {
 	/** Set workbook version; if null, document properties have no version. */
 	public void setVersion(String version) {
 		this.version = version;
+	}
+
+	/**
+	 * Set workbook revision, displayed by Excel as revision number; if null, document properties have no revision.
+	 *
+	 * @throws IllegalArgumentException if revision is not a non-negative integer, since Excel does not open workbooks
+	 *             with other revision values.
+	 */
+	public void setRevision(String revision) {
+		if (revision != null && !revision.matches("[0-9]+")) {
+			throw new IllegalArgumentException("Invalid revision " + revision + ". Expected non-negative integer.");
+		}
+		this.revision = revision;
 	}
 
 	/** Set company, stored in extended document properties; if null, document properties have no company. */
@@ -243,7 +257,7 @@ public final class Workbook {
 		xml.writeEndElement();
 	}
 
-	/** Core properties: creator, optional title, subject, keywords, category, description, status and version, creation and modification time. */
+	/** Core properties: creator, optional title, subject, keywords, category, description, status, version and revision, creation and modification time. */
 	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setPrefix("cp", CORE_NS);
 		xml.setPrefix("dc", DC_NS);
@@ -263,6 +277,7 @@ public final class Workbook {
 		textElement(xml, DC_NS, "description", description);
 		textElement(xml, CORE_NS, "contentStatus", status);
 		textElement(xml, CORE_NS, "version", version);
+		textElement(xml, CORE_NS, "revision", revision);
 		for (String element : new String[] { "created", "modified" }) {
 			xml.writeStartElement(DCTERMS_NS, element);
 			xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");

@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.Assert.assertThrows;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -384,6 +385,53 @@ public class XlsxGeneratorFilesTest {
 		// THEN
 		assertThat(missingVersion, equalTo(Optional.empty()));
 		assertThat(blankVersion, equalTo(Optional.empty()));
+	}
+
+	@Test
+	public void GivenDocumentRevision_WhenExecute_ThenWriteItAsWorkbookRevision() throws Exception {
+		// GIVEN
+		write("document.properties", "document.revision=7\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String revision = coreProperties(execute()).getRevision();
+
+		// THEN
+		assertThat(revision, equalTo("7"));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentRevision_WhenExecute_ThenWriteNoRevision() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingRevision = coreProperties(execute()).getRevision();
+		write("document.properties", "document.revision=  \n");
+
+		// WHEN
+		String blankRevision = coreProperties(execute()).getRevision();
+
+		// THEN
+		assertThat(missingRevision, nullValue());
+		assertThat(blankRevision, nullValue());
+	}
+
+	@Test
+	public void GivenNotIntegerDocumentRevision_WhenExecute_ThenThrowAndWriteNoFile() throws Exception {
+		// GIVEN
+		// Excel does not open workbooks with these revision values
+		String[] revisions = { "2b", "-1", "1.5" };
+		write("table.md", TABLE);
+
+		for (String revision : revisions) {
+			write("document.properties", "document.revision=" + revision + "\n");
+
+			// WHEN
+			IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new XlsxGenerator().execute(documentDir));
+
+			// THEN
+			assertThat(exception.getMessage(), equalTo("Invalid document property document.revision=" + revision + ". Expected non-negative integer."));
+			assertThat(new File(documentDir, "document.xlsx").exists(), equalTo(false));
+		}
 	}
 
 	private static POIXMLProperties.ExtendedProperties extendedProperties(Workbook workbook) {
