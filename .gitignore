@@ -1,4 +1,48 @@
-/.settings/
-/.flattened-pom.xml
-/.project
-/build/
+### IntelliJ IDEA ###
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+cmake-build-*/
+cmake-build-debug/
+cmake-build-release/
+
+# Ignore specific IntelliJ files that are actually useful to share (Optional)
+# Uncomment the lines below if you WANT to share run configurations or code styles
+# !.idea/runConfigurations/
+# !.idea/codeStyles/
+# !.iml
+
+### Java / Maven / Gradle ###
+# Ignore build artifacts
+target/
+build/
+bin/
+*.class
+*.jar
+*.war
+*.ear
+
+# Gradle wrapper files (Usually, you WANT to keep 'gradlew' and 'gradle/wrapper', 
+# but you might want to ignore the local gradle cache/properties)
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+### Logs and Temp Files ###
+*.log
+*.tmp
+*.swp
+*.swo
+
+### OS Specific Files ###
+.DS_Store
+Thumbs.db
+desktop.ini
