@@ -8,7 +8,8 @@ Document directory files:
                          default mdt, document.title, document.subject,
                          document.keywords, document.category,
                          document.comments, document.status,
-                         document.company and document.manager
+                         document.version, document.company and
+                         document.manager
   project.properties     Optional project properties, see below
 
 Project properties:

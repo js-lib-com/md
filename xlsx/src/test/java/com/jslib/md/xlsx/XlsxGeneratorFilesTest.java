@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.ss.usermodel.CellType;
@@ -355,6 +356,34 @@ public class XlsxGeneratorFilesTest {
 		// THEN
 		assertThat(missingStatus, nullValue());
 		assertThat(blankStatus, nullValue());
+	}
+
+	@Test
+	public void GivenDocumentVersion_WhenExecute_ThenWriteItAsWorkbookVersion() throws Exception {
+		// GIVEN
+		write("document.properties", "document.version=1.2 <beta> & \"Iași\"\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		Optional<String> version = coreProperties(execute()).getUnderlyingProperties().getVersionProperty();
+
+		// THEN
+		assertThat(version, equalTo(Optional.of("1.2 <beta> & \"Iași\"")));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentVersion_WhenExecute_ThenWriteNoVersion() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		Optional<String> missingVersion = coreProperties(execute()).getUnderlyingProperties().getVersionProperty();
+		write("document.properties", "document.version=  \n");
+
+		// WHEN
+		Optional<String> blankVersion = coreProperties(execute()).getUnderlyingProperties().getVersionProperty();
+
+		// THEN
+		assertThat(missingVersion, equalTo(Optional.empty()));
+		assertThat(blankVersion, equalTo(Optional.empty()));
 	}
 
 	private static POIXMLProperties.ExtendedProperties extendedProperties(Workbook workbook) {
