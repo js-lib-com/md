@@ -1,6 +1,6 @@
 @echo off
 rem Markdown tools launcher: mdt <command> [options] [document-dir]
-rem Run 'mdt --help' for usage. Requires Java 11 or newer, from JAVA_HOME or PATH.
+rem Run 'mdt --help' for usage. Requires Java 17 or newer, from JAVA_HOME or PATH.
 rem Extra JVM options can be set with MDT_JAVA_OPTS environment variable.
 rem No parenthesized blocks are used since paths like 'C:\Program Files (x86)' would break them.
 setlocal
@@ -22,5 +22,5 @@ echo mdt: Java not found at "%JAVA_EXE%"; please check JAVA_HOME. 1>&2
 exit /b 1
 
 :noJava
-echo mdt: Java not found; please install Java 11 or newer, or set JAVA_HOME. 1>&2
+echo mdt: Java not found; please install Java 17 or newer, or set JAVA_HOME. 1>&2
 exit /b 1

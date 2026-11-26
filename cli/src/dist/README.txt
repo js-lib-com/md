@@ -9,7 +9,7 @@ Layout
   lib\          application and library jars
 
 Setup
-  Requires Java 11 or newer, from JAVA_HOME or PATH.
+  Requires Java 17 or newer, from JAVA_HOME or PATH.
   Add the bin directory to PATH to run mdt from any directory.
 
 Usage

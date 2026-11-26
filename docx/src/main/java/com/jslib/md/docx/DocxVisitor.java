@@ -98,9 +98,17 @@ public class DocxVisitor extends CustomVisitor {
             throw new IOException("Invalid DOCX template. Missing body section properties.");
         }
         Element pageSize = Wml.child(sectPr, "pgSz");
+        if (pageSize == null) {
+            throw new IOException("Invalid DOCX template. Missing page size section properties.");
+        }
         Element pageMargins = Wml.child(sectPr, "pgMar");
-        this.contentPageWidth = Integer.parseInt(Wml.attr(pageSize, "w")) - Integer.parseInt(Wml.attr(pageMargins, "left")) - Integer.parseInt(Wml.attr(pageMargins, "right"));
-
+        int marginLeft = 0;
+        int marginRight = 0;
+        if (pageMargins != null) {
+            marginLeft = Integer.parseInt(Wml.attr(pageMargins, "left"));
+            marginRight = Integer.parseInt(Wml.attr(pageMargins, "right"));
+        }
+        this.contentPageWidth = Integer.parseInt(Wml.attr(pageSize, "w")) - marginLeft - marginRight;
         this.topHeadingsCount = 0;
     }
 
@@ -495,41 +503,79 @@ public class DocxVisitor extends CustomVisitor {
         super.visit(image);
     }
 
-    /** English Metric Units per pixel, at 96 DPI. */
+    /**
+     * English Metric Units per pixel, at 96 DPI.
+     */
     private static final int EMU_PER_PIXEL = 9525;
 
-    // <a:effectLst>
-    // ..<a:outerShdw blurRad="50800" dist="38100" dir="2700000" algn="tl" rotWithShape="false">
-    // ....<a:prstClr val="black">
-    // ......<a:alpha val="40000" />
-    // ....</a:prstClr>
-    // ..</a:outerShdw>
-    // </a:effectLst>
-    private static final String SHADOW_EFFECT = "<a:effectLst><a:outerShdw blurRad=\"50800\" dist=\"38100\" dir=\"2700000\" algn=\"tl\" rotWithShape=\"0\"><a:prstClr val=\"black\"><a:alpha val=\"40000\"/></a:prstClr></a:outerShdw></a:effectLst>";
+    private static final String SHADOW_EFFECT = """
+            <a:effectLst>
+              <a:outerShdw blurRad="50800" dist="38100" dir="2700000" algn="tl" rotWithShape="0">
+                <a:prstClr val="black">
+                  <a:alpha val="40000"/>
+                </a:prstClr>
+              </a:outerShdw>
+            </a:effectLst>
+            """;
 
-    private static final String DRAWING = "<w:drawing" //
-            + " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" //
-            + " xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\"" //
-            + " xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"" //
-            + " xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"" //
-            + " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" //
-            + "<wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">" //
-            + "<wp:extent cx=\"%1$d\" cy=\"%2$d\"/>" //
-            + "<wp:docPr id=\"%3$d\" name=\"Picture %3$d\" descr=\"%4$s\"/>" //
-            + "<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect=\"1\"/></wp:cNvGraphicFramePr>" //
-            + "<a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic>" //
-            + "<pic:nvPicPr><pic:cNvPr id=\"0\" name=\"%4$s\"/><pic:cNvPicPr><a:picLocks noChangeAspect=\"1\"/></pic:cNvPicPr></pic:nvPicPr>" //
-            + "<pic:blipFill><a:blip r:embed=\"%5$s\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>" //
-            + "<pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"%1$d\" cy=\"%2$d\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom>%6$s</pic:spPr>" //
-            + "</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>";
+    /**
+     * Inline drawing template; format arguments are width and height in EMU, drawing ID, image name, image relationship
+     * ID and optional shadow effect. Indentation white spaces are removed after parsing.
+     */
+    private static final String DRAWING = """
+            <w:drawing xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+                xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+                xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+                xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+              <wp:inline distT="0" distB="0" distL="0" distR="0">
+                <wp:extent cx="%1$d" cy="%2$d"/>
+                <wp:docPr id="%3$d" name="Picture %3$d" descr="%4$s"/>
+                <wp:cNvGraphicFramePr>
+                  <a:graphicFrameLocks noChangeAspect="1"/>
+                </wp:cNvGraphicFramePr>
+                <a:graphic>
+                  <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                    <pic:pic>
+                      <pic:nvPicPr>
+                        <pic:cNvPr id="0" name="%4$s"/>
+                        <pic:cNvPicPr>
+                          <a:picLocks noChangeAspect="1"/>
+                        </pic:cNvPicPr>
+                      </pic:nvPicPr>
+                      <pic:blipFill>
+                        <a:blip r:embed="%5$s"/>
+                        <a:stretch>
+                          <a:fillRect/>
+                        </a:stretch>
+                      </pic:blipFill>
+                      <pic:spPr>
+                        <a:xfrm>
+                          <a:off x="0" y="0"/>
+                          <a:ext cx="%1$d" cy="%2$d"/>
+                        </a:xfrm>
+                        <a:prstGeom prst="rect">
+                          <a:avLst/>
+                        </a:prstGeom>
+                        %6$s
+                      </pic:spPr>
+                    </pic:pic>
+                  </a:graphicData>
+                </a:graphic>
+              </wp:inline>
+            </w:drawing>
+            """;
 
-    /** Inline drawing referencing embedded image; image has shadow effect if enabled by project properties. */
+    /**
+     * Inline drawing referencing embedded image; image has shadow effect if enabled by project properties.
+     */
     private Element drawing(String relId, String name, Dimensions dimensions) throws IOException {
         long width = (long) dimensions.getWidth() * EMU_PER_PIXEL;
         long height = (long) dimensions.getHeight() * EMU_PER_PIXEL;
         String effect = projectProperties.imageShadow ? SHADOW_EFFECT : "";
         String xml = String.format(DRAWING, width, height, document.nextDrawingId(), DocxTemplate.escapeXml(name), relId, effect);
         Document fragment = Wml.parse(new ByteArrayInputStream(xml.getBytes(UTF_8)));
+        Wml.stripWhitespace(fragment.getDocumentElement());
         return (Element) document.body().getOwnerDocument().importNode(fragment.getDocumentElement(), true);
     }
 
@@ -545,6 +591,9 @@ public class DocxVisitor extends CustomVisitor {
     }
 
     // ------------------------------------------------------------------------
+
+    // numbering instance IDs of currently open lists, innermost on top
+    private final Deque<Integer> lists = new ArrayDeque<>();
 
     @Override
     public void visit(BulletList bulletList) {
@@ -573,23 +622,23 @@ public class DocxVisitor extends CustomVisitor {
         setStyle(currentParagraph, DocxStyles.getListStyleId());
         ignoreParagraph = true;
 
-        log.debug("Set list item numbering");
-        // <w:pPr>
-        // ..<w:numPr>
-        // ....<w:ilvl w:val="1" />
-        // ....<w:numId w:val="7" />
-        // ..</w:numPr>
-        // </w:pPr>
-
-        setNumbering(currentParagraph, listLevel(lists.size() - 1), lists.peek());
-
+        if (!lists.isEmpty()) {
+            log.debug("Set list item numbering");
+            // <w:pPr>
+            // ..<w:numPr>
+            // ....<w:ilvl w:val="1" />
+            // ....<w:numId w:val="7" />
+            // ..</w:numPr>
+            // </w:pPr>
+            Integer numId = lists.peek();
+            if (numId != null) {
+                setNumbering(currentParagraph, listLevel(lists.size() - 1), numId);
+            }
+        }
         super.visit(listItem);
         // empty list item does not consume pending list paragraph
         ignoreParagraph = false;
     }
-
-    // numbering instance IDs of currently open lists, innermost on top
-    private final Deque<Integer> lists = new ArrayDeque<>();
 
     private static int listLevel(int depth) {
         return Math.min(depth, DocxNumbering.maxLevel());
@@ -722,7 +771,9 @@ public class DocxVisitor extends CustomVisitor {
     // ------------------------------------------------------------------------
     // WordprocessingML helpers
 
-    /** Create paragraph and append it to document body. */
+    /**
+     * Create paragraph and append it to document body.
+     */
     private Element createParagraph() {
         return document.appendBlock(Wml.create(document.body(), "p"));
     }
