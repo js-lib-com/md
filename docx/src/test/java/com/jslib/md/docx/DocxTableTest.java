@@ -25,6 +25,8 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblLayoutType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 
+import com.jslib.md.ProjectProperties;
+
 public class DocxTableTest {
 	// average text lengths 2.5 and 15, that is, 714 and 4286 fiftieths of percent
 	private static final String TABLE = "|Name|Description|\n|-|-|\n|a|long long long text|\n";

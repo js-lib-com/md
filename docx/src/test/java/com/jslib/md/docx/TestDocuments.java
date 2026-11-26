@@ -2,14 +2,13 @@ package com.jslib.md.docx;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.Properties;
 
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.node.Node;
-import org.commonmark.parser.Parser;
 
+import com.jslib.md.Markdown;
+import com.jslib.md.ProjectProperties;
 import com.jslib.md.docx.template.DocxTemplate;
 import com.jslib.md.docx.xml.DocxDocument;
 
@@ -30,7 +29,7 @@ final class TestDocuments {
 	}
 
 	static Node parse(String markdown) {
-		return Parser.builder().extensions(List.of(TablesExtension.create())).build().parse(markdown);
+		return Markdown.parser().parse(markdown);
 	}
 
 	/** Generate markdown into a fresh template document and read it back. */

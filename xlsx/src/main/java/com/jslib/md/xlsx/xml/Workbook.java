@@ -117,7 +117,7 @@ public final class Workbook {
 	 */
 	public void setRevision(String revision) {
 		if (revision != null && !revision.matches("[0-9]+")) {
-			throw new IllegalArgumentException("Invalid revision " + revision + ". Expected non-negative integer.");
+			throw new IllegalArgumentException("Expected non-negative integer.");
 		}
 		this.revision = revision;
 	}

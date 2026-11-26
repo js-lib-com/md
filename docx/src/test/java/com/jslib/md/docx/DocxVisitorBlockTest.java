@@ -28,6 +28,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBrType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
 
+import com.jslib.md.ProjectProperties;
 import com.jslib.md.docx.xml.DocxDocument;
 
 public class DocxVisitorBlockTest {

@@ -15,6 +15,8 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.junit.Test;
 import org.openxmlformats.schemas.officeDocument.x2006.sharedTypes.STVerticalAlignRun;
 
+import com.jslib.md.ProjectProperties;
+
 public class DocxVisitorInlineTest {
 	@Test
 	public void GivenWrappedParagraph_WhenVisit_ThenJoinLinesWithSpace() throws Exception {

@@ -11,6 +11,7 @@ import java.io.IOException;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.junit.Test;
 
+import com.jslib.md.ProjectProperties;
 import com.jslib.md.docx.xml.DocxDocument;
 
 public class DocxVisitorTest {

@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import com.jslib.md.ProjectProperties;
 import com.jslib.md.CustomVisitor;
 import com.jslib.md.InlineHtml;
 import com.jslib.md.InlineHtml.Format;
