@@ -1,12 +1,16 @@
 package com.jslib.md.docx;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFStyle;
-import org.apache.poi.xwpf.usermodel.XWPFStyles;
-import org.apache.xmlbeans.XmlException;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTStyle;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import com.jslib.md.docx.xml.DocxDocument;
+import com.jslib.md.docx.xml.Wml;
 
 public class DocxStyles {
 	private static final String HEADING1_STYLE_ID = "Heading1";
@@ -31,10 +35,14 @@ public class DocxStyles {
 	private static final String QUOTE_STYLE_RESOURCE = "/quote-style.xml";
 	private static final String INTENSE_QUOTE_STYLE_RESOURCE = "/intense-quote-style.xml";
 
-	private final XWPFStyles styles;
+	private final Element styles;
+	private final Set<String> styleIds = new HashSet<>();
 
-	public DocxStyles(XWPFDocument document) throws IOException, XmlException {
-		this.styles = document.createStyles();
+	public DocxStyles(DocxDocument document) throws IOException {
+		this.styles = document.styles().getDocumentElement();
+		for (Element style : Wml.children(styles, "style")) {
+			styleIds.add(Wml.attr(style, "styleId"));
+		}
 		addStyle(HEADING1_STYLE_ID, HEADING1_STYLE_RESOURCE);
 		addStyle(HEADING2_STYLE_ID, HEADING2_STYLE_RESOURCE);
 		addStyle(HEADING3_STYLE_ID, HEADING3_STYLE_RESOURCE);
@@ -46,10 +54,28 @@ public class DocxStyles {
 		addStyle(INTENSE_QUOTE_STYLE_ID, INTENSE_QUOTE_STYLE_RESOURCE);
 	}
 
-	private void addStyle(String styleID, String styleResource) throws IOException, XmlException {
-		if (!styles.styleExist(styleID)) {
-			CTStyle ctStyle = CTStyle.Factory.parse(getClass().getResourceAsStream(styleResource));
-			styles.addStyle(new XWPFStyle(ctStyle));
+	/**
+	 * Add styles from resource, if not already defined by document template. Resource root is either a single style or
+	 * a styles element with related styles, e.g. paragraph style with its linked character style.
+	 */
+	private void addStyle(String styleID, String styleResource) throws IOException {
+		if (styleIds.contains(styleID)) {
+			return;
+		}
+		Document resource;
+		try (InputStream stream = getClass().getResourceAsStream(styleResource)) {
+			if (stream == null) {
+				throw new IOException("Missing style resource " + styleResource);
+			}
+			resource = Wml.parse(stream);
+		}
+		Element root = resource.getDocumentElement();
+		Wml.stripWhitespace(root);
+		List<Element> resourceStyles = Wml.is(root, "style") ? List.of(root) : Wml.children(root, "style");
+		for (Element style : resourceStyles) {
+			if (styleIds.add(Wml.attr(style, "styleId"))) {
+				styles.appendChild(styles.getOwnerDocument().importNode(style, true));
+			}
 		}
 	}
 

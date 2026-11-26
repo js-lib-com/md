@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Properties;
 import java.util.stream.Collectors;
 
 import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
@@ -13,13 +12,8 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.xmlbeans.XmlException;
-import org.commonmark.ext.gfm.tables.TablesExtension;
-import org.commonmark.parser.Parser;
 import org.junit.Test;
 import org.openxmlformats.schemas.officeDocument.x2006.sharedTypes.STVerticalAlignRun;
-
-import com.jslib.md.docx.template.DocxTemplate;
 
 public class DocxVisitorInlineTest {
 	@Test
@@ -160,10 +154,8 @@ public class DocxVisitorInlineTest {
                 (run.isHighlighted() ? "h" : "");
 	}
 
-	private static XWPFParagraph lastParagraph(String markdown) throws IOException, XmlException {
-		XWPFDocument document = new XWPFDocument(new DocxTemplate(new Properties()).getInputStream());
-		DocxVisitor visitor = new DocxVisitor(document, ProjectProperties.empty());
-		Parser.builder().extensions(List.of(TablesExtension.create())).build().parse(markdown).accept(visitor);
+	private static XWPFParagraph lastParagraph(String markdown) throws IOException {
+		XWPFDocument document = TestDocuments.generate(markdown, ProjectProperties.empty());
 		List<XWPFParagraph> paragraphs = document.getParagraphs();
 		return paragraphs.get(paragraphs.size() - 1);
 	}

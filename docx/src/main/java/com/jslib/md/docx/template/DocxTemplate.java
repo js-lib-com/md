@@ -90,7 +90,7 @@ public class DocxTemplate {
 		return builder.toString();
 	}
 
-	static String escapeXml(String value) {
+	public static String escapeXml(String value) {
 		StringBuilder builder = new StringBuilder(value.length());
 		for (int i = 0; i < value.length(); ++i) {
 			char c = value.charAt(i);

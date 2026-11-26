@@ -7,8 +7,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThrows;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -19,9 +17,6 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.apache.xmlbeans.XmlException;
-import org.commonmark.ext.gfm.tables.TablesExtension;
-import org.commonmark.parser.Parser;
 import org.junit.Before;
 import org.junit.Test;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
@@ -29,8 +24,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblGridCol;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblLayoutType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
-
-import com.jslib.md.docx.template.DocxTemplate;
 
 public class DocxTableTest {
 	// average text lengths 2.5 and 15, that is, 714 and 4286 fiftieths of percent
@@ -150,16 +143,9 @@ public class DocxTableTest {
 		assertThat(exception.getMessage(), notNullValue());
 	}
 
-	private XWPFTable table(String markdown) throws IOException, XmlException {
-		XWPFDocument document = new XWPFDocument(new DocxTemplate(new Properties()).getInputStream());
-		int tablesCount = document.getTables().size();
-		DocxVisitor visitor = new DocxVisitor(document, new ProjectProperties(properties));
-		Parser.builder().extensions(List.of(TablesExtension.create())).build().parse(markdown).accept(visitor);
-
-		// save and reload to check widths survive serialization
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		document.write(buffer);
-		XWPFDocument reloaded = new XWPFDocument(new ByteArrayInputStream(buffer.toByteArray()));
+	private XWPFTable table(String markdown) throws IOException {
+		int tablesCount = TestDocuments.reload(TestDocuments.template()).getTables().size();
+		XWPFDocument reloaded = TestDocuments.generate(markdown, new ProjectProperties(properties));
 		assertThat(reloaded.getTables().size(), equalTo(tablesCount + 1));
 		return reloaded.getTables().get(tablesCount);
 	}

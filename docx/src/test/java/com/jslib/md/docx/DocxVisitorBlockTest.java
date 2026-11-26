@@ -6,15 +6,12 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -23,16 +20,11 @@ import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFNum;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.xmlbeans.XmlException;
-import org.commonmark.ext.gfm.tables.TablesExtension;
-import org.commonmark.parser.Parser;
 import org.junit.Before;
 import org.junit.Test;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBrType;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
-
-import com.jslib.md.docx.template.DocxTemplate;
 
 public class DocxVisitorBlockTest {
 	private XWPFDocument document;
@@ -40,12 +32,12 @@ public class DocxVisitorBlockTest {
 
 	@Before
 	public void beforeTest() throws IOException {
-		document = new XWPFDocument(new DocxTemplate(new Properties()).getInputStream());
+		document = TestDocuments.reload(TestDocuments.template());
 		templateParagraphsCount = document.getParagraphs().size();
 	}
 
 	@Test
-	public void GivenTemplateNumbering_WhenCreateVisitor_ThenNumberingIdsAreUnique() throws IOException, XmlException {
+	public void GivenTemplateNumbering_WhenCreateVisitor_ThenNumberingIdsAreUnique() throws IOException {
 		// GIVEN
 		String markdown = "- item";
 
@@ -54,7 +46,7 @@ public class DocxVisitorBlockTest {
 
 		// THEN
 		// identifiers are still unique after a save / reload round trip
-		XWPFDocument reloaded = reload(document);
+		XWPFDocument reloaded = document;
 		List<BigInteger> abstractIds = reloaded.getNumbering().getAbstractNums().stream().map(a -> a.getCTAbstractNum().getAbstractNumId()).collect(Collectors.toList());
 		List<BigInteger> numIds = reloaded.getNumbering().getNums().stream().map(n -> n.getCTNum().getNumId()).collect(Collectors.toList());
 		assertThat(new HashSet<>(abstractIds), hasSize(abstractIds.size()));
@@ -62,7 +54,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenNestedBulletList_WhenVisit_ThenSetLevelsAndBulletFormat() throws IOException, XmlException {
+	public void GivenNestedBulletList_WhenVisit_ThenSetLevelsAndBulletFormat() throws IOException {
 		// GIVEN
 		String markdown = "- one\n  - one.one\n    - one.one.one\n- two";
 
@@ -77,7 +69,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenOrderedLists_WhenVisit_ThenUseDecimalFormatAndRestartEveryList() throws IOException, XmlException {
+	public void GivenOrderedLists_WhenVisit_ThenUseDecimalFormatAndRestartEveryList() throws IOException {
 		// GIVEN
 		String markdown = "1. first\n2. second\n\nParagraph.\n\n3. third\n4. fourth";
 
@@ -95,7 +87,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenOrderedListNestedInBulletList_WhenVisit_ThenUseOrderedNumberingOnNestedLevel() throws IOException, XmlException {
+	public void GivenOrderedListNestedInBulletList_WhenVisit_ThenUseOrderedNumberingOnNestedLevel() throws IOException {
 		// GIVEN
 		String markdown = "- bullet\n  1. ordered\n  2. ordered\n- bullet";
 
@@ -110,7 +102,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenFencedCodeAsFirstListItemBlock_WhenVisit_ThenRenderCode() throws IOException, XmlException {
+	public void GivenFencedCodeAsFirstListItemBlock_WhenVisit_ThenRenderCode() throws IOException {
 		// GIVEN
 		String markdown = "- ```\n  code line\n  ```\n- item";
 
@@ -125,7 +117,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenFencedCodeAfterListItemText_WhenVisit_ThenRenderCodeIndented() throws IOException, XmlException {
+	public void GivenFencedCodeAfterListItemText_WhenVisit_ThenRenderCodeIndented() throws IOException {
 		// GIVEN
 		String markdown = "- step:\n\n  ```\n  code line\n  ```\n";
 
@@ -138,7 +130,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenEmptyListItem_WhenVisit_ThenFollowingParagraphIsNotListItem() throws IOException, XmlException {
+	public void GivenEmptyListItem_WhenVisit_ThenFollowingParagraphIsNotListItem() throws IOException {
 		// GIVEN
 		String markdown = "-\n\nParagraph.";
 
@@ -152,7 +144,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenIndentedCodeBlock_WhenVisit_ThenRenderLikeFencedCode() throws IOException, XmlException {
+	public void GivenIndentedCodeBlock_WhenVisit_ThenRenderLikeFencedCode() throws IOException {
 		// GIVEN
 		String indentedMarkdown = "Text:\n\n    int x = 1;\n      return x;\n";
 		String fencedMarkdown = "Text:\n\n```\nint x = 1;\n  return x;\n```\n";
@@ -171,7 +163,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenThematicBreak_WhenVisit_ThenAddParagraphWithBottomBorder() throws IOException, XmlException {
+	public void GivenThematicBreak_WhenVisit_ThenAddParagraphWithBottomBorder() throws IOException {
 		// GIVEN
 		String markdown = "Before.\n\n***\n\nAfter.";
 
@@ -185,7 +177,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenHtmlComment_WhenVisit_ThenIgnore() throws IOException, XmlException {
+	public void GivenHtmlComment_WhenVisit_ThenIgnore() throws IOException {
 		// GIVEN
 		String markdown = "Before.\n\n<!-- author note\nspanning lines -->\n\nAfter.";
 
@@ -197,7 +189,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenHtmlPageBreak_WhenVisit_ThenAddPageBreak() throws IOException, XmlException {
+	public void GivenHtmlPageBreak_WhenVisit_ThenAddPageBreak() throws IOException {
 		// GIVEN
 		String markdown = "Before.\n\n<div style=\"page-break-after: always\"></div>\n\nAfter.";
 
@@ -211,7 +203,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenHtmlBlock_WhenVisit_ThenRenderPlainTextPerBlockElement() throws IOException, XmlException {
+	public void GivenHtmlBlock_WhenVisit_ThenRenderPlainTextPerBlockElement() throws IOException {
 		// GIVEN
 		String markdown = "<div align=\"center\">\n<p>First <b>bold</b>\nline &amp; more</p>\n<p>Second&nbsp;line</p>\n</div>\n";
 
@@ -223,7 +215,7 @@ public class DocxVisitorBlockTest {
 	}
 
 	@Test
-	public void GivenHeadingLevelsFiveAndSix_WhenVisit_ThenUseHeadingStylesAndNumbering() throws IOException, XmlException {
+	public void GivenHeadingLevelsFiveAndSix_WhenVisit_ThenUseHeadingStylesAndNumbering() throws IOException {
 		// GIVEN
 		String markdown = "# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6";
 
@@ -236,19 +228,28 @@ public class DocxVisitorBlockTest {
 		assertThat(lvlText(paragraphs.get(5)), equalTo("%1.%2.%3.%4.%5.%6"));
 	}
 
-	// --------------------------------------------------------------------------------------------
+	@Test
+	public void GivenBlockQuote_WhenVisit_ThenUseQuoteStylesAddedToDocument() throws IOException {
+		// GIVEN
+		String markdown = "> quoted";
 
-	private List<XWPFParagraph> generate(String markdown) throws IOException, XmlException {
-		DocxVisitor visitor = new DocxVisitor(document, ProjectProperties.empty());
-		Parser.builder().extensions(List.of(TablesExtension.create())).build().parse(markdown).accept(visitor);
-		List<XWPFParagraph> paragraphs = document.getParagraphs();
-		return new ArrayList<>(paragraphs.subList(templateParagraphsCount, paragraphs.size()));
+		// WHEN
+		List<XWPFParagraph> paragraphs = generate(markdown);
+
+		// THEN
+		assertThat(paragraphs.get(0).getStyle(), equalTo("IntenseQuote"));
+		// style resources with several styles are added as top level styles, not nested
+		for (String styleId : new String[]{"Quote", "QuoteChar", "IntenseQuote", "IntenseQuoteChar"}) {
+			assertThat(styleId, document.getStyles().styleExist(styleId), equalTo(true));
+		}
 	}
 
-	private static XWPFDocument reload(XWPFDocument document) throws IOException {
-		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-		document.write(buffer);
-		return new XWPFDocument(new ByteArrayInputStream(buffer.toByteArray()));
+	// --------------------------------------------------------------------------------------------
+
+	private List<XWPFParagraph> generate(String markdown) throws IOException {
+		document = TestDocuments.generate(markdown, ProjectProperties.empty());
+		List<XWPFParagraph> paragraphs = document.getParagraphs();
+		return new ArrayList<>(paragraphs.subList(templateParagraphsCount, paragraphs.size()));
 	}
 
 	private static List<String> texts(List<XWPFParagraph> paragraphs) {

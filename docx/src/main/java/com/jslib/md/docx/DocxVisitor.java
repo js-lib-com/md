@@ -1,37 +1,21 @@
 package com.jslib.md.docx;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigInteger;
+import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Hex;
-import org.apache.poi.util.Units;
-import org.apache.poi.xwpf.usermodel.Borders;
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFPicture;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
-import org.apache.xmlbeans.XmlException;
-import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.commonmark.ext.gfm.tables.TableBlock;
-import org.commonmark.ext.gfm.tables.TableBody;
 import org.commonmark.ext.gfm.tables.TableCell;
-import org.commonmark.ext.gfm.tables.TableHead;
 import org.commonmark.ext.gfm.tables.TableRow;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.BulletList;
@@ -52,34 +36,10 @@ import org.commonmark.node.SoftLineBreak;
 import org.commonmark.node.StrongEmphasis;
 import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
-import org.openxmlformats.schemas.drawingml.x2006.main.CTEffectList;
-import org.openxmlformats.schemas.drawingml.x2006.main.CTOuterShadowEffect;
-import org.openxmlformats.schemas.drawingml.x2006.main.CTPositiveFixedPercentage;
-import org.openxmlformats.schemas.drawingml.x2006.main.CTPresetColor;
-import org.openxmlformats.schemas.drawingml.x2006.main.STPresetColorVal;
-import org.openxmlformats.schemas.drawingml.x2006.main.STRectAlignment;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTDecimalNumber;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHyperlink;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTNumPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTOnOff;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageSz;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTString;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblGrid;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblLayoutType;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblLook;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblLayoutType;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import com.jslib.md.CustomVisitor;
 import com.jslib.md.InlineHtml;
@@ -90,33 +50,35 @@ import com.jslib.md.docx.util.Color;
 import com.jslib.md.docx.util.Dimensions;
 import com.jslib.md.docx.util.Images;
 import com.jslib.md.docx.util.Strings;
+import com.jslib.md.docx.xml.DocxDocument;
+import com.jslib.md.docx.xml.Wml;
 
 public class DocxVisitor extends CustomVisitor {
     private static final Logger log = LoggerFactory.getLogger(DocxVisitor.class);
 
     private final Images images;
     private final File imagesDir;
-    private final XWPFDocument document;
-    // the width of the page used for content display, i.e. page size minus left and right margins
-    private final BigInteger contentPageWidth;
+    private final DocxDocument document;
+    // the width of the page used for content display, i.e. page size minus left and right margins, in twips
+    private final int contentPageWidth;
 
     private final ProjectProperties projectProperties;
     private final DocxNumbering numbering;
 
     private int topHeadingsCount;
-    private XWPFParagraph currentParagraph;
-    private XWPFRun currentRun;
+    private Element currentParagraph;
+    private Element currentRun;
     private boolean ignoreParagraph;
     private boolean blockQuoteDetected;
 
-    public DocxVisitor(DocxTemplate template, ProjectProperties projectProperties, File imagesDir) throws IOException, XmlException {
-        this(new XWPFDocument(template.getInputStream()), projectProperties, imagesDir);
+    public DocxVisitor(DocxTemplate template, ProjectProperties projectProperties, File imagesDir) throws IOException {
+        this(new DocxDocument(template.getInputStream()), projectProperties, imagesDir);
         log.trace("DocxVisitor(DocxTemplate template, ProjectProperties projectProperties, File imagesDir)");
     }
 
-    DocxVisitor(XWPFDocument document, ProjectProperties projectProperties, File... imagesDir) throws IOException, XmlException {
+    DocxVisitor(DocxDocument document, ProjectProperties projectProperties, File... imagesDir) throws IOException {
         super();
-        log.trace("DocxVisitor(XWPFDocument document, ProjectProperties projectProperties, File... imagesDir)");
+        log.trace("DocxVisitor(DocxDocument document, ProjectProperties projectProperties, File... imagesDir)");
 
         this.images = new Images();
         this.imagesDir = imagesDir.length == 1 ? imagesDir[0] : new File(".");
@@ -131,19 +93,18 @@ public class DocxVisitor extends CustomVisitor {
         this.numbering = new DocxNumbering(document);
 
         log.debug("Compute available page width");
-        CTSectPr sectPr = document.getDocument().getBody().getSectPr();
-        CTPageSz pageSize = sectPr.getPgSz();
-
-        CTPageMar pageMargins = sectPr.getPgMar();
-        BigInteger leftMargin = (BigInteger) pageMargins.getLeft();
-        BigInteger rightMargin = (BigInteger) pageMargins.getRight();
-
-        this.contentPageWidth = ((BigInteger) pageSize.getW()).subtract(leftMargin).subtract(rightMargin);
+        Element sectPr = Wml.child(document.body(), "sectPr");
+        if (sectPr == null) {
+            throw new IOException("Invalid DOCX template. Missing body section properties.");
+        }
+        Element pageSize = Wml.child(sectPr, "pgSz");
+        Element pageMargins = Wml.child(sectPr, "pgMar");
+        this.contentPageWidth = Integer.parseInt(Wml.attr(pageSize, "w")) - Integer.parseInt(Wml.attr(pageMargins, "left")) - Integer.parseInt(Wml.attr(pageMargins, "right"));
 
         this.topHeadingsCount = 0;
     }
 
-    public XWPFDocument getDocument() {
+    public DocxDocument getDocument() {
         return document;
     }
 
@@ -155,18 +116,16 @@ public class DocxVisitor extends CustomVisitor {
         if (heading.getLevel() == 1) {
             if (topHeadingsCount++ > 0) {
                 log.debug("Add page break before heading 1");
-                XWPFParagraph paragraph = document.createParagraph();
-                XWPFRun run = paragraph.createRun();
-                run.addBreak(org.apache.poi.xwpf.usermodel.BreakType.PAGE);
+                Wml.addBreak(Wml.add(createParagraph(), "r"), "page");
             }
         }
 
         log.debug("Create heading paragraph");
-        currentParagraph = document.createParagraph();
+        currentParagraph = createParagraph();
 
         int headingLevel = heading.getLevel();
         log.debug("Set style: Heading: {}", headingLevel);
-        currentParagraph.setStyle(DocxStyles.getHeadingStyleId(headingLevel));
+        setStyle(currentParagraph, DocxStyles.getHeadingStyleId(headingLevel));
 
         log.debug("Set heading numbering");
         // <w:pPr>
@@ -176,27 +135,7 @@ public class DocxVisitor extends CustomVisitor {
         // ..</w:numPr>
         // </w:pPr>
 
-        CTPPr pPr = currentParagraph.getCTP().getPPr();
-        if (pPr == null) {
-            pPr = currentParagraph.getCTP().addNewPPr();
-        }
-
-        CTNumPr numPr = pPr.getNumPr();
-        if (numPr == null) {
-            numPr = pPr.addNewNumPr();
-        }
-
-        CTDecimalNumber ilvl = numPr.getIlvl();
-        if (ilvl == null) {
-            ilvl = numPr.addNewIlvl();
-        }
-        ilvl.setVal(BigInteger.valueOf(headingLevel - 1));
-
-        CTDecimalNumber numId = numPr.getNumId();
-        if (numId == null) {
-            numId = numPr.addNewNumId();
-        }
-        numId.setVal(numbering.getHeadingsNumId());
+        setNumbering(currentParagraph, headingLevel - 1, numbering.getHeadingsNumId());
 
         super.visit(heading);
     }
@@ -207,11 +146,11 @@ public class DocxVisitor extends CustomVisitor {
         startInlineContent();
         if (!ignoreParagraph) {
             log.debug("Create paragraph");
-            currentParagraph = document.createParagraph();
+            currentParagraph = createParagraph();
             if (blockQuoteDetected) {
                 blockQuoteDetected = false;
                 log.debug("Set style: Quote");
-                currentParagraph.setStyle(DocxStyles.getIntenseQuoteStyleId());
+                setStyle(currentParagraph, DocxStyles.getIntenseQuoteStyleId());
             }
             // continuation paragraph of a loose list item is aligned with list item text
             indentToList(currentParagraph);
@@ -231,9 +170,9 @@ public class DocxVisitor extends CustomVisitor {
     public void visit(Code code) {
         log.trace("visit(Code code)");
         log.debug("Code literal: {}", code.getLiteral());
-        XWPFRun run = createInlineRun();
-        run.setText(code.getLiteral());
-        run.setStyle(DocxStyles.getQuoteCharStyleId());
+        Element run = createInlineRun();
+        Wml.setText(run, code.getLiteral());
+        Wml.property(rPr(run), "rStyle", DocxStyles.getQuoteCharStyleId());
         super.visit(code);
     }
 
@@ -259,32 +198,35 @@ public class DocxVisitor extends CustomVisitor {
     private void codeBlock(String literal) {
         Strings.lines(literal).forEach(line -> {
             log.debug("Create code block paragraph");
-            currentParagraph = document.createParagraph();
-            currentParagraph.setStyle(DocxStyles.getNoSpacing());
-            currentParagraph.setBorderLeft(Borders.SINGLE);
+            currentParagraph = createParagraph();
+            setStyle(currentParagraph, DocxStyles.getNoSpacing());
+            setBorder(currentParagraph, "left");
             indentToList(currentParagraph);
 
             log.debug("Create code block run");
-            XWPFRun run = currentParagraph.createRun();
-            run.setFontFamily("Consolas");
-            run.setFontSize(8);
-            run.setColor(Color.LIGHT_BLUE.name);
-
-            CTText ctText = run.getCTR().addNewT();
-            ctText.setSpace(SpaceAttribute.Space.PRESERVE);
-            run.setText(line);
+            Element run = Wml.add(currentParagraph, "r");
+            Element rFonts = Wml.property(rPr(run), "rFonts");
+            for (String attribute : new String[]{"ascii", "hAnsi", "cs", "eastAsia"}) {
+                Wml.attr(rFonts, attribute, "Consolas");
+            }
+            // font size is in half points
+            Wml.property(rPr(run), "sz", 16);
+            Wml.property(rPr(run), "color", Color.LIGHT_BLUE.name);
+            if (!line.isEmpty()) {
+                Wml.setText(run, line);
+            }
         });
         ignoreParagraph = false;
         // code literal ends with new line so last paragraph is empty; remove its border to not extend code block frame
-        currentParagraph.setBorderLeft(Borders.NONE);
+        Wml.remove(pPr(currentParagraph), "pBdr");
     }
 
     @Override
     public void visit(ThematicBreak thematicBreak) {
         log.trace("visit(ThematicBreak thematicBreak)");
         log.debug("Create horizontal rule paragraph");
-        currentParagraph = document.createParagraph();
-        currentParagraph.setBorderBottom(Borders.SINGLE);
+        currentParagraph = createParagraph();
+        setBorder(currentParagraph, "bottom");
         indentToList(currentParagraph);
         ignoreParagraph = false;
     }
@@ -307,8 +249,8 @@ public class DocxVisitor extends CustomVisitor {
 
         if (HTML_PAGE_BREAK.matcher(html).find()) {
             log.debug("Add page break for HTML page break style");
-            currentParagraph = document.createParagraph();
-            currentParagraph.createRun().addBreak(org.apache.poi.xwpf.usermodel.BreakType.PAGE);
+            currentParagraph = createParagraph();
+            Wml.addBreak(Wml.add(currentParagraph, "r"), "page");
             ignoreParagraph = false;
             return;
         }
@@ -320,9 +262,9 @@ public class DocxVisitor extends CustomVisitor {
         }
         log.warn("HTML formatting is not supported; render HTML block as plain text: {}", htmlBlock.getLiteral().strip());
         for (String line : lines) {
-            currentParagraph = document.createParagraph();
+            currentParagraph = createParagraph();
             indentToList(currentParagraph);
-            createInlineRun().setText(line);
+            Wml.setText(createInlineRun(), line);
         }
         ignoreParagraph = false;
     }
@@ -365,37 +307,37 @@ public class DocxVisitor extends CustomVisitor {
     /**
      * Create a run on current paragraph with formatting from enclosing emphasis.
      */
-    private XWPFRun createInlineRun() {
+    private Element createInlineRun() {
         assert currentParagraph != null;
         log.debug("Create inline run");
-        XWPFRun run = currentParagraph.createRun();
+        Element run = Wml.add(currentParagraph, "r");
         applyEmphasis(run);
         return run;
     }
 
-    private void applyEmphasis(XWPFRun run) {
+    private void applyEmphasis(Element run) {
         if (italicDepth > 0 || htmlFormats.isOpen(Format.ITALIC)) {
-            run.setItalic(true);
+            Wml.property(rPr(run), "i");
         }
         if (boldDepth > 0 || htmlFormats.isOpen(Format.BOLD)) {
-            run.setBold(true);
+            Wml.property(rPr(run), "b");
         }
         if (htmlFormats.isOpen(Format.UNDERLINE)) {
-            run.setUnderline(UnderlinePatterns.SINGLE);
+            Wml.property(rPr(run), "u", "single");
         }
         if (htmlFormats.isOpen(Format.STRIKE)) {
-            run.setStrikeThrough(true);
+            Wml.property(rPr(run), "strike");
         }
         if (htmlFormats.isOpen(Format.CODE)) {
-            run.setStyle(DocxStyles.getQuoteCharStyleId());
+            Wml.property(rPr(run), "rStyle", DocxStyles.getQuoteCharStyleId());
         }
         if (htmlFormats.isOpen(Format.SUPERSCRIPT)) {
-            run.setVerticalAlignment("superscript");
+            Wml.property(rPr(run), "vertAlign", "superscript");
         } else if (htmlFormats.isOpen(Format.SUBSCRIPT)) {
-            run.setVerticalAlignment("subscript");
+            Wml.property(rPr(run), "vertAlign", "subscript");
         }
         if (htmlFormats.isOpen(Format.HIGHLIGHT)) {
-            run.setTextHighlightColor("yellow");
+            Wml.property(rPr(run), "highlight", "yellow");
         }
     }
 
@@ -433,7 +375,7 @@ public class DocxVisitor extends CustomVisitor {
         }
 
         if (tag.isLineBreak()) {
-            createInlineRun().addBreak();
+            Wml.addBreak(createInlineRun(), null);
         } else if (tag.isAnchor()) {
             if (tag.closing) {
                 // anchor without text does not leave pending hyperlink run for following text
@@ -450,13 +392,13 @@ public class DocxVisitor extends CustomVisitor {
     public void visit(SoftLineBreak softLineBreak) {
         log.trace("visit(SoftLineBreak softLineBreak)");
         // Markdown source line break inside a paragraph is rendered as a space
-        createInlineRun().setText(" ");
+        Wml.setText(createInlineRun(), " ");
     }
 
     @Override
     public void visit(HardLineBreak hardLineBreak) {
         log.trace("visit(HardLineBreak hardLineBreak)");
-        createInlineRun().addBreak();
+        Wml.addBreak(createInlineRun(), null);
     }
 
     @Override
@@ -473,7 +415,7 @@ public class DocxVisitor extends CustomVisitor {
             textLiteral = "Figure " + ++pictureIndex + " - " + textLiteral;
         }
         log.debug("Set run text: |{}|", textLiteral);
-        currentRun.setText(textLiteral);
+        Wml.setText(currentRun, textLiteral);
         currentRun = null;
     }
 
@@ -493,7 +435,9 @@ public class DocxVisitor extends CustomVisitor {
     private void startHyperlink(String destination) {
         log.debug("Create hyperlink run to: {}", destination);
         assert currentParagraph != null;
-        currentRun = currentParagraph.createHyperlinkRun(destination);
+        Element hyperlink = Wml.add(currentParagraph, "hyperlink");
+        hyperlink.setAttributeNS(Wml.R_NS, "r:id", document.addHyperlink(destination));
+        currentRun = Wml.add(hyperlink, "r");
 
         if (!projectProperties.linkEnabled) {
             return;
@@ -502,32 +446,16 @@ public class DocxVisitor extends CustomVisitor {
         // <w:hyperlink r:id="rId7">
         // ..<w:r>
         // ....<w:rPr>
-        // ......<w:color w:val="0000FF" />
         // ......<w:rStyle w:val="Hyperlink" />
+        // ......<w:color w:val="0000FF" />
         // ....</w:rPr>
         // ....<w:t>see visit(Text)</w:t>
         // ..</w:r>
         // </w:hyperlink>
 
         log.debug("Set hyperlink style: {}", DocxStyles.getLinkStyleId());
-        // w:hyperlink
-        CTHyperlink ctHyperlink = ((XWPFHyperlinkRun) currentRun).getCTHyperlink();
-        assert ctHyperlink.getRArray().length == 1;
-        // w:r
-        CTR ctr = ctHyperlink.getRArray(0);
-        // w:rPr
-        CTRPr ctrPr = ctr.getRPr();
-        if (ctrPr == null) {
-            ctrPr = ctr.addNewRPr();
-        }
-
-        // w:rStyle
-        CTString rStyle = CTString.Factory.newInstance();
-        rStyle.setVal(DocxStyles.getLinkStyleId());
-        ctrPr.setRStyleArray(new CTString[]{rStyle});
-
-        // crazy: without next statement above w:rStyle is not written in document xml w:color
-        ctrPr.addNewColor().setVal("0000FF");
+        Wml.property(rPr(currentRun), "rStyle", DocxStyles.getLinkStyleId());
+        Wml.property(rPr(currentRun), "color", "0000FF");
     }
 
     // ------------------------------------------------------------------------
@@ -540,7 +468,7 @@ public class DocxVisitor extends CustomVisitor {
         log.trace("visit(Image image)");
 
         log.debug("Create run");
-        XWPFRun run = currentParagraph.createRun();
+        Element run = Wml.add(currentParagraph, "r");
 
         File imageFile = new File(imagesDir, image.getDestination());
         Dimensions dimensions = images.getDimension(imageFile);
@@ -551,91 +479,58 @@ public class DocxVisitor extends CustomVisitor {
             imageFile = images.resize(imageFile, dimensions);
         }
 
-        try (InputStream inputStream = new FileInputStream(imageFile)) {
-            int width = Units.pixelToEMU(dimensions.getWidth());
-            int height = Units.pixelToEMU(dimensions.getHeight());
+        try {
             log.debug("Add run picture: {}", imageFile);
-            XWPFPicture picture = run.addPicture(inputStream, pictureType(imageFile.getName()), imageFile.getName(), width, height);
-
-            if (projectProperties.imageShadow) {
-                log.debug("Add shadow effect");
-                shadowEffect(picture);
-            }
+            String relId = document.addImage(Files.readAllBytes(imageFile.toPath()), getFileExtension(imageFile.getName()));
+            run.appendChild(drawing(relId, new File(image.getDestination()).getName(), dimensions));
         } catch (Exception e) {
             log.error("Fail to process image: {}: {}", e.getClass(), e.getMessage(), e);
         }
 
         // separated paragraph for image caption
         log.debug("Create image caption");
-        currentParagraph = document.createParagraph();
+        currentParagraph = createParagraph();
         pictureDescription = true;
 
         super.visit(image);
     }
 
-    private static int pictureType(String path) {
-        switch (getFileExtension(path)) {
-            case "emf":
-                return XWPFDocument.PICTURE_TYPE_EMF;
-            case "wmf":
-                return XWPFDocument.PICTURE_TYPE_WMF;
-            case "pict":
-                return XWPFDocument.PICTURE_TYPE_PICT;
-            case "jpeg":
-            case "jpg":
-                return XWPFDocument.PICTURE_TYPE_JPEG;
-            case "png":
-                return XWPFDocument.PICTURE_TYPE_PNG;
-            case "dib":
-                return XWPFDocument.PICTURE_TYPE_DIB;
-            case "gif":
-                return XWPFDocument.PICTURE_TYPE_GIF;
-            case "tiff":
-                return XWPFDocument.PICTURE_TYPE_TIFF;
-            case "eps":
-                return XWPFDocument.PICTURE_TYPE_EPS;
-            case "bmp":
-                return XWPFDocument.PICTURE_TYPE_BMP;
-            case "wpg":
-                return XWPFDocument.PICTURE_TYPE_WPG;
-            default:
-                System.err.println("Unsupported picture:" + path + ". Expected emf|wmf|pict|jpeg|png|dib|gif|tiff|eps|bmp|wpg");
-                return 0;
-        }
-    }
+    /** English Metric Units per pixel, at 96 DPI. */
+    private static final int EMU_PER_PIXEL = 9525;
 
-    private static void shadowEffect(XWPFPicture picture) {
-        // <a:effectLst>
-        // ..<a:outerShdw blurRad="50800" dist="38100" dir="2700000" algn="tl" rotWithShape="false">
-        // ....<a:prstClr val="black">
-        // ......<a:alpha val="40000" />
-        // ....</a:prstClr>
-        // ..</a:outerShdw>
-        // </a:effectLst>
+    // <a:effectLst>
+    // ..<a:outerShdw blurRad="50800" dist="38100" dir="2700000" algn="tl" rotWithShape="false">
+    // ....<a:prstClr val="black">
+    // ......<a:alpha val="40000" />
+    // ....</a:prstClr>
+    // ..</a:outerShdw>
+    // </a:effectLst>
+    private static final String SHADOW_EFFECT = "<a:effectLst><a:outerShdw blurRad=\"50800\" dist=\"38100\" dir=\"2700000\" algn=\"tl\" rotWithShape=\"0\"><a:prstClr val=\"black\"><a:alpha val=\"40000\"/></a:prstClr></a:outerShdw></a:effectLst>";
 
-        // a:outerShdw
-        CTOuterShadowEffect outerShadow = CTOuterShadowEffect.Factory.newInstance();
-        outerShadow.setBlurRad(50800);
-        outerShadow.setDist(38100);
-        outerShadow.setDir(2700000);
-        outerShadow.setAlgn(STRectAlignment.TL);
-        outerShadow.setRotWithShape(false);
+    private static final String DRAWING = "<w:drawing" //
+            + " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" //
+            + " xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\"" //
+            + " xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"" //
+            + " xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"" //
+            + " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" //
+            + "<wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">" //
+            + "<wp:extent cx=\"%1$d\" cy=\"%2$d\"/>" //
+            + "<wp:docPr id=\"%3$d\" name=\"Picture %3$d\" descr=\"%4$s\"/>" //
+            + "<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect=\"1\"/></wp:cNvGraphicFramePr>" //
+            + "<a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><pic:pic>" //
+            + "<pic:nvPicPr><pic:cNvPr id=\"0\" name=\"%4$s\"/><pic:cNvPicPr><a:picLocks noChangeAspect=\"1\"/></pic:cNvPicPr></pic:nvPicPr>" //
+            + "<pic:blipFill><a:blip r:embed=\"%5$s\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>" //
+            + "<pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"%1$d\" cy=\"%2$d\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom>%6$s</pic:spPr>" //
+            + "</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>";
 
-        // a:alpha
-        CTPositiveFixedPercentage transparency = CTPositiveFixedPercentage.Factory.newInstance();
-        transparency.setVal(new BigInteger("40000"));
-
-        // a:prstClr
-        CTPresetColor presetColor = CTPresetColor.Factory.newInstance();
-        presetColor.setVal(STPresetColorVal.BLACK);
-        presetColor.setAlphaArray(new CTPositiveFixedPercentage[]{transparency});
-        outerShadow.setPrstClr(presetColor);
-
-        // a:effectLst
-        CTEffectList effectList = CTEffectList.Factory.newInstance();
-        effectList.setOuterShdw(outerShadow);
-
-        picture.getCTPicture().getSpPr().setEffectLst(effectList);
+    /** Inline drawing referencing embedded image; image has shadow effect if enabled by project properties. */
+    private Element drawing(String relId, String name, Dimensions dimensions) throws IOException {
+        long width = (long) dimensions.getWidth() * EMU_PER_PIXEL;
+        long height = (long) dimensions.getHeight() * EMU_PER_PIXEL;
+        String effect = projectProperties.imageShadow ? SHADOW_EFFECT : "";
+        String xml = String.format(DRAWING, width, height, document.nextDrawingId(), DocxTemplate.escapeXml(name), relId, effect);
+        Document fragment = Wml.parse(new ByteArrayInputStream(xml.getBytes(UTF_8)));
+        return (Element) document.body().getOwnerDocument().importNode(fragment.getDocumentElement(), true);
     }
 
     private static String getFileExtension(String path) {
@@ -646,7 +541,7 @@ public class DocxVisitor extends CustomVisitor {
         if (lastDotIndex == -1 || lastDotIndex == path.length() - 1) {
             return "";
         }
-        return path.substring(lastDotIndex + 1);
+        return path.substring(lastDotIndex + 1).toLowerCase(Locale.ROOT);
     }
 
     // ------------------------------------------------------------------------
@@ -674,8 +569,8 @@ public class DocxVisitor extends CustomVisitor {
         assert !lists.isEmpty();
 
         log.debug("Create list item");
-        currentParagraph = document.createParagraph();
-        currentParagraph.setStyle(DocxStyles.getListStyleId());
+        currentParagraph = createParagraph();
+        setStyle(currentParagraph, DocxStyles.getListStyleId());
         ignoreParagraph = true;
 
         log.debug("Set list item numbering");
@@ -686,27 +581,7 @@ public class DocxVisitor extends CustomVisitor {
         // ..</w:numPr>
         // </w:pPr>
 
-        CTPPr pPr = currentParagraph.getCTP().getPPr();
-        if (pPr == null) {
-            pPr = currentParagraph.getCTP().addNewPPr();
-        }
-
-        CTNumPr numPr = pPr.getNumPr();
-        if (numPr == null) {
-            numPr = pPr.addNewNumPr();
-        }
-
-        CTDecimalNumber ilvl = numPr.getIlvl();
-        if (ilvl == null) {
-            ilvl = numPr.addNewIlvl();
-        }
-        ilvl.setVal(BigInteger.valueOf(listLevel(lists.size() - 1)));
-
-        CTDecimalNumber numId = numPr.getNumId();
-        if (numId == null) {
-            numId = numPr.addNewNumId();
-        }
-        numId.setVal(lists.peek());
+        setNumbering(currentParagraph, listLevel(lists.size() - 1), lists.peek());
 
         super.visit(listItem);
         // empty list item does not consume pending list paragraph
@@ -714,7 +589,7 @@ public class DocxVisitor extends CustomVisitor {
     }
 
     // numbering instance IDs of currently open lists, innermost on top
-    private final Deque<BigInteger> lists = new ArrayDeque<>();
+    private final Deque<Integer> lists = new ArrayDeque<>();
 
     private static int listLevel(int depth) {
         return Math.min(depth, DocxNumbering.maxLevel());
@@ -723,156 +598,106 @@ public class DocxVisitor extends CustomVisitor {
     /**
      * Align a block paragraph nested in a list with the text of the enclosing list item.
      */
-    private void indentToList(XWPFParagraph paragraph) {
+    private void indentToList(Element paragraph) {
         if (!lists.isEmpty()) {
-            paragraph.setIndentationLeft(DocxNumbering.textIndent(listLevel(lists.size() - 1)));
+            Wml.attr(Wml.property(pPr(paragraph), "ind"), "left", DocxNumbering.textIndent(listLevel(lists.size() - 1)));
         }
     }
 
     // ------------------------------------------------------------------------
 
-    private XWPFTable currentTable;
-    private XWPFTableRow currentTableRow;
-    private boolean tableRowIndexInitialized;
-    private int tableRowIndex;
-    private int tableColumnIndex;
+    private Element currentTable;
+    private Element currentTableRow;
 
     @Override
     public void visit(TableBlock table) {
         log.trace("visit(TableBlock table)");
 
         log.debug("Create table");
-        currentTable = document.createTable();
+        currentTable = document.appendBlock(Wml.create(document.body(), "tbl"));
+        Element tblPr = Wml.property(currentTable, "tblPr");
 
         log.debug("Set table style ID {}", DocxStyles.getTableStyleId());
-        currentTable.setStyleID(DocxStyles.getTableStyleId());
-
-        CTTblPr tblPr = currentTable.getCTTbl().getTblPr();
-        log.debug("Unset table borders");
-        tblPr.unsetTblBorders();
+        Wml.property(tblPr, "tblStyle", DocxStyles.getTableStyleId());
 
         log.debug("Set table width to fill page");
-        CTTblWidth width = CTTblWidth.Factory.newInstance();
-        width.setW(contentPageWidth);
-        width.setType(STTblWidth.DXA);
-        tblPr.setTblW(width);
+        Element width = Wml.property(tblPr, "tblW");
+        Wml.attr(width, "w", contentPageWidth);
+        Wml.attr(width, "type", "dxa");
 
         log.debug("Set table look");
-        CTTblLook tblLook = tblPr.isSetTblLook() ? tblPr.getTblLook() : tblPr.addNewTblLook();
-        try {
-            tblLook.setVal(Hex.decodeHex("04A0".toCharArray()));
-        } catch (DecoderException e) {
-            log.error("Error decoding table look", e);
-        }
+        Wml.property(tblPr, "tblLook", "04A0");
 
         super.visit(table);
 
-        int tableRowsCount = tableRowIndex;
-        assert tableRowsCount > 0;
-        int tableColumnsCount = currentTable.getRow(0).getTableCells().size();
+        List<Element> rows = Wml.children(currentTable, "tr");
+        assert !rows.isEmpty();
+        int tableColumnsCount = Wml.children(rows.get(0), "tc").size();
 
         if (projectProperties.tableAutoFit) {
             autoFit(currentTable, tableColumnsCount);
         } else {
             // all but last column fit their content without wrapping; last column takes remaining page width
-            CTOnOff noWrapFlag = CTOnOff.Factory.newInstance();
-            noWrapFlag.setVal("1");
-
-            for (XWPFTableRow row : currentTable.getRows()) {
-                for (int columnIndex = 0; columnIndex < tableColumnsCount - 1; ++columnIndex) {
-                    XWPFTableCell cell = row.getTableCells().get(columnIndex);
-                    CTTcPr properties = cell.getCTTc().getTcPr();
-                    if (properties == null) {
-                        properties = cell.getCTTc().addNewTcPr();
-                    }
-                    properties.setNoWrap(noWrapFlag);
+            for (Element row : rows) {
+                List<Element> cells = Wml.children(row, "tc");
+                for (int columnIndex = 0; columnIndex < Math.min(tableColumnsCount - 1, cells.size()); ++columnIndex) {
+                    Wml.property(Wml.property(cells.get(columnIndex), "tcPr"), "noWrap");
                 }
             }
         }
 
         log.debug("Add space after table");
-        XWPFParagraph space = document.createParagraph();
-        space.setSpacingAfter(0);
-        space.setSpacingBefore(0);
-        space.createRun().setFontSize(0);
+        Element space = createParagraph();
+        Element spacing = Wml.property(pPr(space), "spacing");
+        Wml.attr(spacing, "before", 0);
+        Wml.attr(spacing, "after", 0);
+        Wml.property(rPr(Wml.add(space, "r")), "sz", 0);
     }
 
     /**
      * Set columns width, in percent, proportional with the quantity of text in every column but not less than minimal
      * column width from project properties. Table layout is fixed so that word processors use computed widths.
      */
-    private void autoFit(XWPFTable table, int columnsCount) {
+    private void autoFit(Element table, int columnsCount) {
         List<List<String>> texts = new ArrayList<>();
-        for (XWPFTableRow row : table.getRows()) {
+        for (Element row : Wml.children(table, "tr")) {
             List<String> rowTexts = new ArrayList<>();
-            for (XWPFTableCell cell : row.getTableCells()) {
-                rowTexts.add(cell.getText());
+            for (Element cell : Wml.children(row, "tc")) {
+                rowTexts.add(Wml.text(cell));
             }
             texts.add(rowTexts);
         }
         int[] widths = TableColumns.widths(texts, projectProperties.tableColumnMinWidth, projectProperties.tableColumnOutliers);
         log.debug("Set table columns width, in fiftieths of percent: {}", Arrays.toString(widths));
 
-        CTTblPr tblPr = table.getCTTbl().getTblPr();
-        CTTblLayoutType layout = tblPr.isSetTblLayout() ? tblPr.getTblLayout() : tblPr.addNewTblLayout();
-        layout.setType(STTblLayoutType.FIXED);
+        Element tblPr = Wml.property(table, "tblPr");
+        Wml.attr(Wml.property(tblPr, "tblLayout"), "type", "fixed");
 
         // fixed layout uses table grid, in twips, computed from page content width
-        CTTblGrid grid = table.getCTTbl().getTblGrid();
-        if (grid == null) {
-            grid = table.getCTTbl().addNewTblGrid();
-        }
-        while (grid.sizeOfGridColArray() > 0) {
-            grid.removeGridCol(0);
+        Element grid = Wml.property(table, "tblGrid");
+        while (grid.getFirstChild() != null) {
+            grid.removeChild(grid.getFirstChild());
         }
         for (int width : widths) {
-            grid.addNewGridCol().setW(contentPageWidth.multiply(BigInteger.valueOf(width)).divide(BigInteger.valueOf(TableColumns.FULL_WIDTH)));
+            Wml.attr(Wml.add(grid, "gridCol"), "w", (long) contentPageWidth * width / TableColumns.FULL_WIDTH);
         }
 
-        for (XWPFTableRow row : table.getRows()) {
-            List<XWPFTableCell> cells = row.getTableCells();
+        for (Element row : Wml.children(table, "tr")) {
+            List<Element> cells = Wml.children(row, "tc");
             for (int column = 0; column < Math.min(columnsCount, cells.size()); ++column) {
-                CTTcPr tcPr = cells.get(column).getCTTc().isSetTcPr() ? cells.get(column).getCTTc().getTcPr() : cells.get(column).getCTTc().addNewTcPr();
-                CTTblWidth tcW = tcPr.isSetTcW() ? tcPr.getTcW() : tcPr.addNewTcW();
-                tcW.setType(STTblWidth.PCT);
-                tcW.setW(BigInteger.valueOf(widths[column]));
+                Element tcW = Wml.property(Wml.property(cells.get(column), "tcPr"), "tcW");
+                Wml.attr(tcW, "w", widths[column]);
+                Wml.attr(tcW, "type", "pct");
             }
         }
     }
 
     @Override
-    public void visit(TableHead head) {
-        log.trace("visit(TableHead head)");
-        tableRowIndexInitialized = true;
-        tableRowIndex = 0;
-        super.visit(head);
-    }
-
-    @Override
-    public void visit(TableBody body) {
-        log.trace("visit(TableBody body)");
-        if (!tableRowIndexInitialized) {
-            tableRowIndex = 0;
-        }
-        tableRowIndexInitialized = false;
-        super.visit(body);
-    }
-
-    @Override
     public void visit(TableRow row) {
         log.trace("visit(TableRow row)");
-
         assert currentTable != null;
-        if (tableRowIndex < currentTable.getNumberOfRows()) {
-            log.debug("Retrieve row: {} ", tableRowIndex);
-            currentTableRow = currentTable.getRow(tableRowIndex);
-        } else {
-            log.debug("Create row: {} ", tableRowIndex);
-            currentTableRow = currentTable.createRow();
-        }
-
-        ++tableRowIndex;
-        tableColumnIndex = 0;
+        log.debug("Create row");
+        currentTableRow = Wml.add(currentTable, "tr");
         super.visit(row);
     }
 
@@ -881,44 +706,58 @@ public class DocxVisitor extends CustomVisitor {
         log.trace("visit(TableCell mdCell)");
         startInlineContent();
 
-        XWPFTableCell docxCell;
         assert currentTableRow != null;
-        if (tableColumnIndex < currentTableRow.getTableCells().size()) {
-            log.debug("Retrieve cell: {}", tableColumnIndex);
-            docxCell = currentTableRow.getCell(tableColumnIndex);
-        } else {
-            log.debug("Create cell: {}", tableColumnIndex);
-            docxCell = currentTableRow.createCell();
-        }
-        ++tableColumnIndex;
+        log.debug("Create cell and its paragraph");
+        currentParagraph = Wml.add(Wml.add(currentTableRow, "tc"), "p");
 
-        log.debug("Create table cell paragraph");
-        List<XWPFParagraph> paragraphs = docxCell.getParagraphs();
-        if (paragraphs.isEmpty()) {
-            currentParagraph = docxCell.addParagraph();
-        } else {
-            currentParagraph = paragraphs.get(0);
-        }
-
-        ParagraphAlignment alignment = null;
         if (mdCell.getAlignment() != null) {
-            switch (mdCell.getAlignment()) {
-                case LEFT:
-                    alignment = ParagraphAlignment.LEFT;
-                    break;
-                case CENTER:
-                    alignment = ParagraphAlignment.CENTER;
-                    break;
-                case RIGHT:
-                    alignment = ParagraphAlignment.RIGHT;
-                    break;
-            }
-        }
-        if (alignment != null) {
+            String alignment = mdCell.getAlignment().name().toLowerCase(Locale.ROOT);
             log.debug("Set paragraph alignment: {}", alignment);
-            currentParagraph.setAlignment(alignment);
+            Wml.property(pPr(currentParagraph), "jc", alignment);
         }
 
         super.visit(mdCell);
+    }
+
+    // ------------------------------------------------------------------------
+    // WordprocessingML helpers
+
+    /** Create paragraph and append it to document body. */
+    private Element createParagraph() {
+        return document.appendBlock(Wml.create(document.body(), "p"));
+    }
+
+    private static Element pPr(Element paragraph) {
+        return Wml.property(paragraph, "pPr");
+    }
+
+    private static Element rPr(Element run) {
+        return Wml.property(run, "rPr");
+    }
+
+    private static void setStyle(Element paragraph, String styleId) {
+        Wml.property(pPr(paragraph), "pStyle", styleId);
+    }
+
+    private static void setBorder(Element paragraph, String side) {
+        Wml.property(Wml.property(pPr(paragraph), "pBdr"), side, "single");
+    }
+
+    /**
+     * Set paragraph numbering.
+     *
+     * <pre>
+     * &lt;w:pPr&gt;
+     * ..&lt;w:numPr&gt;
+     * ....&lt;w:ilvl w:val="1" /&gt;
+     * ....&lt;w:numId w:val="7" /&gt;
+     * ..&lt;/w:numPr&gt;
+     * &lt;/w:pPr&gt;
+     * </pre>
+     */
+    private static void setNumbering(Element paragraph, int level, int numId) {
+        Element numPr = Wml.property(pPr(paragraph), "numPr");
+        Wml.property(numPr, "ilvl", level);
+        Wml.property(numPr, "numId", numId);
     }
 }

@@ -1,21 +1,10 @@
 package com.jslib.md.docx;
 
-import java.math.BigInteger;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 
-import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFNum;
-import org.apache.poi.xwpf.usermodel.XWPFNumbering;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTInd;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTNumLvl;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPPrGeneral;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STHint;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STJc;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
+import com.jslib.md.docx.xml.DocxDocument;
+import com.jslib.md.docx.xml.Wml;
 
 /**
  * Numbering definitions for headings, bullet lists and ordered lists. Identifiers are allocated after those already
@@ -31,62 +20,55 @@ public class DocxNumbering {
 
 	private static final String[] BULLET_TEXTS = { "", "o", "" };
 	private static final String[] BULLET_FONTS = { "Symbol", "Courier New", "Wingdings" };
-	private static final STNumberFormat.Enum[] ORDERED_FORMATS = { STNumberFormat.DECIMAL, STNumberFormat.LOWER_LETTER, STNumberFormat.LOWER_ROMAN };
+	private static final String[] ORDERED_FORMATS = { "decimal", "lowerLetter", "lowerRoman" };
 
-	private final XWPFNumbering numbering;
-	private final BigInteger orderedAbstractNumId;
-	private final BigInteger headingsNumId;
-	private final BigInteger bulletsNumId;
+	private final Element numbering;
+	private final int orderedAbstractNumId;
+	private final int headingsNumId;
+	private final int bulletsNumId;
 
-	private BigInteger nextNumId;
+	private int nextNumId;
 
-	public DocxNumbering(XWPFDocument document) {
-		this.numbering = document.createNumbering();
+	public DocxNumbering(DocxDocument document) {
+		this.numbering = document.numbering().getDocumentElement();
 
-		BigInteger nextAbstractNumId = BigInteger.ZERO;
-		for (XWPFAbstractNum abstractNum : numbering.getAbstractNums()) {
-			nextAbstractNumId = nextAbstractNumId.max(abstractNum.getCTAbstractNum().getAbstractNumId().add(BigInteger.ONE));
+		int nextAbstractNumId = 0;
+		for (Element abstractNum : Wml.children(numbering, "abstractNum")) {
+			nextAbstractNumId = Math.max(nextAbstractNumId, Integer.parseInt(Wml.attr(abstractNum, "abstractNumId")) + 1);
 		}
-		nextNumId = BigInteger.ONE;
-		for (XWPFNum num : numbering.getNums()) {
-			nextNumId = nextNumId.max(num.getCTNum().getNumId().add(BigInteger.ONE));
+		nextNumId = 1;
+		for (Element num : Wml.children(numbering, "num")) {
+			nextNumId = Math.max(nextNumId, Integer.parseInt(Wml.attr(num, "numId")) + 1);
 		}
 
-		CTAbstractNum headingsAbstractNum = CTAbstractNum.Factory.newInstance();
-		BigInteger headingsAbstractNumId = nextAbstractNumId;
-		headingsAbstractNum.setAbstractNumId(headingsAbstractNumId);
+		int headingsAbstractNumId = nextAbstractNumId;
+		Element headingsAbstractNum = addAbstractNum(headingsAbstractNumId);
 		StringBuilder headingText = new StringBuilder();
 		for (int level = 0; level < HEADING_LEVELS_COUNT; ++level) {
 			if (level > 0) {
 				headingText.append('.');
 			}
 			headingText.append('%').append(level + 1);
-			addLevel(headingsAbstractNum, level, DocxStyles.getHeadingStyleId(level + 1), STNumberFormat.DECIMAL, headingText.toString(), LEVEL_INDENT);
+			addLevel(headingsAbstractNum, level, DocxStyles.getHeadingStyleId(level + 1), "decimal", headingText.toString(), LEVEL_INDENT);
 		}
 
-		CTAbstractNum bulletsAbstractNum = CTAbstractNum.Factory.newInstance();
-		BigInteger bulletsAbstractNumId = nextAbstractNumId.add(BigInteger.ONE);
-		bulletsAbstractNum.setAbstractNumId(bulletsAbstractNumId);
+		int bulletsAbstractNumId = nextAbstractNumId + 1;
+		Element bulletsAbstractNum = addAbstractNum(bulletsAbstractNumId);
 		for (int level = 0; level < LEVELS_COUNT; ++level) {
 			int symbol = level % BULLET_TEXTS.length;
-			CTLvl ctLvl = addLevel(bulletsAbstractNum, level, DocxStyles.getListStyleId(), STNumberFormat.BULLET, BULLET_TEXTS[symbol], textIndent(level));
-			addFonts(ctLvl, BULLET_FONTS[symbol]);
+			Element lvl = addLevel(bulletsAbstractNum, level, DocxStyles.getListStyleId(), "bullet", BULLET_TEXTS[symbol], textIndent(level));
+			addFonts(lvl, BULLET_FONTS[symbol]);
 		}
 
-		CTAbstractNum orderedAbstractNum = CTAbstractNum.Factory.newInstance();
-		orderedAbstractNumId = nextAbstractNumId.add(BigInteger.TWO);
-		orderedAbstractNum.setAbstractNumId(orderedAbstractNumId);
+		orderedAbstractNumId = nextAbstractNumId + 2;
+		Element orderedAbstractNum = addAbstractNum(orderedAbstractNumId);
 		for (int level = 0; level < LEVELS_COUNT; ++level) {
-			STNumberFormat.Enum format = ORDERED_FORMATS[level % ORDERED_FORMATS.length];
+			String format = ORDERED_FORMATS[level % ORDERED_FORMATS.length];
 			addLevel(orderedAbstractNum, level, DocxStyles.getListStyleId(), format, "%" + (level + 1) + ".", textIndent(level));
 		}
 
-		numbering.addAbstractNum(new XWPFAbstractNum(headingsAbstractNum));
-		numbering.addAbstractNum(new XWPFAbstractNum(bulletsAbstractNum));
-		numbering.addAbstractNum(new XWPFAbstractNum(orderedAbstractNum));
-
-		headingsNumId = addNum(headingsAbstractNumId);
-		bulletsNumId = addNum(bulletsAbstractNumId);
+		headingsNumId = addNum(headingsAbstractNumId).numId;
+		bulletsNumId = addNum(bulletsAbstractNumId).numId;
 	}
 
 	/**
@@ -96,12 +78,14 @@ public class DocxNumbering {
 	 * @param start list start number as declared in Markdown source.
 	 * @return numbering instance ID.
 	 */
-	public BigInteger addOrderedNum(int level, int start) {
-		BigInteger numId = addNum(orderedAbstractNumId);
-		CTNumLvl override = numbering.getNum(numId).getCTNum().addNewLvlOverride();
-		override.setIlvl(BigInteger.valueOf(level));
-		override.addNewStartOverride().setVal(BigInteger.valueOf(start));
-		return numId;
+	public int addOrderedNum(int level, int start) {
+		Num num = addNum(orderedAbstractNumId);
+		// <w:lvlOverride w:ilvl="1">
+		// ..<w:startOverride w:val="3" />
+		// </w:lvlOverride>
+		Element override = Wml.attr(Wml.add(num.element, "lvlOverride"), "ilvl", level);
+		Wml.property(override, "startOverride", start);
+		return num.numId;
 	}
 
 	/** Left indentation, in twips, for the text of a list item at given nesting level, 0 based. */
@@ -113,43 +97,67 @@ public class DocxNumbering {
 		return LEVELS_COUNT - 1;
 	}
 
-	public BigInteger getHeadingsNumId() {
+	public int getHeadingsNumId() {
 		return headingsNumId;
 	}
 
-	public BigInteger getBulletsNumId() {
+	public int getBulletsNumId() {
 		return bulletsNumId;
 	}
 
-	private BigInteger addNum(BigInteger abstractNumId) {
-		BigInteger numId = nextNumId;
-		nextNumId = nextNumId.add(BigInteger.ONE);
-		numbering.addNum(abstractNumId, numId);
-		return numId;
+	// --------------------------------------------------------------------------------------------
+
+	/** Abstract numbering definitions precede all numbering instances, as required by schema. */
+	private Element addAbstractNum(int abstractNumId) {
+		Element abstractNum = Wml.attr(Wml.create(numbering, "abstractNum"), "abstractNumId", abstractNumId);
+		Node before = Wml.child(numbering, "num");
+		if (before == null) {
+			before = Wml.child(numbering, "numIdMacAtCleanup");
+		}
+		numbering.insertBefore(abstractNum, before);
+		return abstractNum;
 	}
 
-	private static CTLvl addLevel(CTAbstractNum abstractNum, int ilvl, String style, STNumberFormat.Enum numFmt, String lvlText, int leftIndent) {
-		CTLvl ctLvl = abstractNum.addNewLvl();
-		ctLvl.setIlvl(BigInteger.valueOf(ilvl));
-		ctLvl.addNewStart().setVal(BigInteger.ONE);
-		ctLvl.addNewPStyle().setVal(style);
-		ctLvl.addNewNumFmt().setVal(numFmt);
-		ctLvl.addNewLvlText().setVal(lvlText);
-		ctLvl.addNewLvlJc().setVal(STJc.LEFT);
-
-		CTPPrGeneral ppr = ctLvl.addNewPPr();
-		CTInd ind = ppr.addNewInd();
-		ind.setLeft(BigInteger.valueOf(leftIndent));
-		ind.setHanging(BigInteger.valueOf(LEVEL_INDENT));
-
-		return ctLvl;
+	private Num addNum(int abstractNumId) {
+		int numId = nextNumId++;
+		// <w:num w:numId="5">
+		// ..<w:abstractNumId w:val="3" />
+		// </w:num>
+		Element num = Wml.attr(Wml.create(numbering, "num"), "numId", numId);
+		Wml.property(num, "abstractNumId", abstractNumId);
+		numbering.insertBefore(num, Wml.child(numbering, "numIdMacAtCleanup"));
+		return new Num(numId, num);
 	}
 
-	private static void addFonts(CTLvl ctLvl, String font) {
-		CTRPr rpr = ctLvl.addNewRPr();
-		CTFonts rFonts = rpr.addNewRFonts();
-		rFonts.setAscii(font);
-		rFonts.setHAnsi(font);
-		rFonts.setHint(STHint.DEFAULT);
+	private static Element addLevel(Element abstractNum, int ilvl, String style, String numFmt, String lvlText, int leftIndent) {
+		// child elements order is imposed by schema
+		Element lvl = Wml.attr(Wml.add(abstractNum, "lvl"), "ilvl", ilvl);
+		Wml.attr(Wml.add(lvl, "start"), "val", 1);
+		Wml.attr(Wml.add(lvl, "numFmt"), "val", numFmt);
+		Wml.attr(Wml.add(lvl, "pStyle"), "val", style);
+		Wml.attr(Wml.add(lvl, "lvlText"), "val", lvlText);
+		Wml.attr(Wml.add(lvl, "lvlJc"), "val", "left");
+
+		Element ind = Wml.add(Wml.add(lvl, "pPr"), "ind");
+		Wml.attr(ind, "left", leftIndent);
+		Wml.attr(ind, "hanging", LEVEL_INDENT);
+		return lvl;
+	}
+
+	private static void addFonts(Element lvl, String font) {
+		Element rFonts = Wml.add(Wml.add(lvl, "rPr"), "rFonts");
+		Wml.attr(rFonts, "ascii", font);
+		Wml.attr(rFonts, "hAnsi", font);
+		Wml.attr(rFonts, "hint", "default");
+	}
+
+	private static class Num {
+		final int numId;
+		final Element element;
+
+		Num(int numId, Element element) {
+			this.numId = numId;
+			this.element = element;
+		}
 	}
 }

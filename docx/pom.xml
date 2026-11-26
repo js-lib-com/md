@@ -17,17 +17,15 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi</artifactId>
+			<groupId>net.coobird</groupId>
+			<artifactId>thumbnailator</artifactId>
 		</dependency>
+
+		<!-- used by tests only, to read back and check generated documents -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>net.coobird</groupId>
-			<artifactId>thumbnailator</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
