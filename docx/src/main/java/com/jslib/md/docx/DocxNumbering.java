@@ -49,14 +49,14 @@ public class DocxNumbering {
 				headingText.append('.');
 			}
 			headingText.append('%').append(level + 1);
-			addLevel(headingsAbstractNum, level, DocxStyles.getHeadingStyleId(level + 1), "decimal", headingText.toString(), LEVEL_INDENT);
+			addLevel(headingsAbstractNum, level, DocxStyles.heading(level + 1), "decimal", headingText.toString(), LEVEL_INDENT);
 		}
 
 		int bulletsAbstractNumId = nextAbstractNumId + 1;
 		Element bulletsAbstractNum = addAbstractNum(bulletsAbstractNumId);
 		for (int level = 0; level < LEVELS_COUNT; ++level) {
 			int symbol = level % BULLET_TEXTS.length;
-			Element lvl = addLevel(bulletsAbstractNum, level, DocxStyles.getListStyleId(), "bullet", BULLET_TEXTS[symbol], textIndent(level));
+			Element lvl = addLevel(bulletsAbstractNum, level, DocxStyles.LIST_PARAGRAPH, "bullet", BULLET_TEXTS[symbol], textIndent(level));
 			addFonts(lvl, BULLET_FONTS[symbol]);
 		}
 
@@ -64,7 +64,7 @@ public class DocxNumbering {
 		Element orderedAbstractNum = addAbstractNum(orderedAbstractNumId);
 		for (int level = 0; level < LEVELS_COUNT; ++level) {
 			String format = ORDERED_FORMATS[level % ORDERED_FORMATS.length];
-			addLevel(orderedAbstractNum, level, DocxStyles.getListStyleId(), format, "%" + (level + 1) + ".", textIndent(level));
+			addLevel(orderedAbstractNum, level, DocxStyles.LIST_PARAGRAPH, format, "%" + (level + 1) + ".", textIndent(level));
 		}
 
 		headingsNumId = addNum(headingsAbstractNumId).numId;

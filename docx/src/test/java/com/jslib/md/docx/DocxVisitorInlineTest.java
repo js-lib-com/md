@@ -164,7 +164,7 @@ public class DocxVisitorInlineTest {
 	private static String format(XWPFRun run) {
         return "[" + run.text() + "]" + (run.isItalic() ? "i" : "") + (run.isBold() ? "b" : "") +
                 (run.getUnderline() != UnderlinePatterns.NONE ? "u" : "") + (run.isStrikeThrough() ? "s" : "") +
-                (DocxStyles.getQuoteCharStyleId().equals(run.getStyle()) ? "c" : "") +
+                (DocxStyles.QUOTE_CHAR.equals(run.getStyle()) ? "c" : "") +
                 (run.getVerticalAlignment() == STVerticalAlignRun.SUPERSCRIPT ? "^" : "") +
                 (run.getVerticalAlignment() == STVerticalAlignRun.SUBSCRIPT ? "_" : "") +
                 (run.isHighlighted() ? "h" : "");

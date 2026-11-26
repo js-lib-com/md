@@ -18,6 +18,8 @@ import java.util.zip.ZipOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jslib.md.docx.xml.Wml;
+
 /**
  * DOCX template with {{variable}} placeholders replaced by document properties. Template archive is processed in memory:
  * XML parts have variables injected, with values XML escaped, while all other parts are copied unchanged. If a variable
@@ -84,36 +86,9 @@ public class DocxTemplate {
 				value = name;
 			}
 			log.debug("Replace variable value: {}: {}", name, value);
-			matcher.appendReplacement(builder, Matcher.quoteReplacement(escapeXml(value)));
+			matcher.appendReplacement(builder, Matcher.quoteReplacement(Wml.escapeXml(value)));
 		}
 		matcher.appendTail(builder);
-		return builder.toString();
-	}
-
-	public static String escapeXml(String value) {
-		StringBuilder builder = new StringBuilder(value.length());
-		for (int i = 0; i < value.length(); ++i) {
-			char c = value.charAt(i);
-			switch (c) {
-			case '&':
-				builder.append("&amp;");
-				break;
-			case '<':
-				builder.append("&lt;");
-				break;
-			case '>':
-				builder.append("&gt;");
-				break;
-			case '"':
-				builder.append("&quot;");
-				break;
-			case '\'':
-				builder.append("&apos;");
-				break;
-			default:
-				builder.append(c);
-			}
-		}
 		return builder.toString();
 	}
 

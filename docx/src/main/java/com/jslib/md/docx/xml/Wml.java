@@ -255,4 +255,69 @@ public final class Wml {
 			parent.removeChild(child);
 		}
 	}
+
+	// --------------------------------------------------------------------------------------------
+	// paragraph and run properties
+
+	/** Paragraph properties, created if missing. */
+	public static Element pPr(Element paragraph) {
+		return property(paragraph, "pPr");
+	}
+
+	/** Run properties, created if missing. */
+	public static Element rPr(Element run) {
+		return property(run, "rPr");
+	}
+
+	public static void setParagraphStyle(Element paragraph, String styleId) {
+		property(pPr(paragraph), "pStyle", styleId);
+	}
+
+	/** Add single line paragraph border on given side, e.g. left or bottom. */
+	public static void setParagraphBorder(Element paragraph, String side) {
+		property(property(pPr(paragraph), "pBdr"), side, "single");
+	}
+
+	/**
+	 * Set paragraph numbering.
+	 *
+	 * <pre>
+	 * &lt;w:pPr&gt;
+	 * ..&lt;w:numPr&gt;
+	 * ....&lt;w:ilvl w:val="1" /&gt;
+	 * ....&lt;w:numId w:val="7" /&gt;
+	 * ..&lt;/w:numPr&gt;
+	 * &lt;/w:pPr&gt;
+	 * </pre>
+	 */
+	public static void setNumbering(Element paragraph, int level, int numId) {
+		Element numPr = property(pPr(paragraph), "numPr");
+		property(numPr, "ilvl", level);
+		property(numPr, "numId", numId);
+	}
+
+	/** Set paragraph left indentation, in twips. */
+	public static void setIndent(Element paragraph, int left) {
+		attr(property(pPr(paragraph), "ind"), "left", left);
+	}
+
+	// --------------------------------------------------------------------------------------------
+	// text
+
+	/** Escape XML special characters, quotes included, so that value can be used in text and attribute values. */
+	public static String escapeXml(String value) {
+		StringBuilder builder = new StringBuilder(value.length());
+		for (int i = 0; i < value.length(); ++i) {
+			char c = value.charAt(i);
+			switch (c) {
+			case '&' -> builder.append("&amp;");
+			case '<' -> builder.append("&lt;");
+			case '>' -> builder.append("&gt;");
+			case '"' -> builder.append("&quot;");
+			case '\'' -> builder.append("&apos;");
+			default -> builder.append(c);
+			}
+		}
+		return builder.toString();
+	}
 }
