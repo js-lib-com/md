@@ -58,6 +58,7 @@ public final class Workbook {
 	private String keywords;
 	private String category;
 	private String description;
+	private String status;
 	private String company;
 	private String manager;
 
@@ -89,6 +90,11 @@ public final class Workbook {
 	/** Set workbook description, displayed by Excel as comments; if null, document properties have no description. */
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	/** Set workbook content status, e.g. draft or final; if null, document properties have no status. */
+	public void setStatus(String status) {
+		this.status = status;
 	}
 
 	/** Set company, stored in extended document properties; if null, document properties have no company. */
@@ -231,7 +237,7 @@ public final class Workbook {
 		xml.writeEndElement();
 	}
 
-	/** Core properties: creator, optional title, subject, keywords, category and description, creation and modification time. */
+	/** Core properties: creator, optional title, subject, keywords, category, description and status, creation and modification time. */
 	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setPrefix("cp", CORE_NS);
 		xml.setPrefix("dc", DC_NS);
@@ -249,6 +255,7 @@ public final class Workbook {
 		textElement(xml, CORE_NS, "keywords", keywords);
 		textElement(xml, CORE_NS, "category", category);
 		textElement(xml, DC_NS, "description", description);
+		textElement(xml, CORE_NS, "contentStatus", status);
 		for (String element : new String[] { "created", "modified" }) {
 			xml.writeStartElement(DCTERMS_NS, element);
 			xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");

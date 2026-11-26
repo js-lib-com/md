@@ -329,6 +329,34 @@ public class XlsxGeneratorFilesTest {
 		assertThat(blankManager, nullValue());
 	}
 
+	@Test
+	public void GivenDocumentStatus_WhenExecute_ThenWriteItAsWorkbookContentStatus() throws Exception {
+		// GIVEN
+		write("document.properties", "document.status=Draft & <review> \"Iași\"\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String status = coreProperties(execute()).getContentStatus();
+
+		// THEN
+		assertThat(status, equalTo("Draft & <review> \"Iași\""));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentStatus_WhenExecute_ThenWriteNoContentStatus() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingStatus = coreProperties(execute()).getContentStatus();
+		write("document.properties", "document.status=  \n");
+
+		// WHEN
+		String blankStatus = coreProperties(execute()).getContentStatus();
+
+		// THEN
+		assertThat(missingStatus, nullValue());
+		assertThat(blankStatus, nullValue());
+	}
+
 	private static POIXMLProperties.ExtendedProperties extendedProperties(Workbook workbook) {
 		return ((XSSFWorkbook) workbook).getProperties().getExtendedProperties();
 	}
