@@ -106,7 +106,7 @@ public class XlsxGeneratorFilesTest {
 	@Test
 	public void GivenDocumentAuthor_WhenExecute_ThenWriteItAsWorkbookCreator() throws Exception {
 		// GIVEN
-		write("project.properties", "document.author=R&D <team> \"Iași\"\n");
+		write("document.properties", "document.author=R&D <team> \"Iași\"\n");
 		write("table.md", TABLE);
 
 		// WHEN
@@ -121,7 +121,7 @@ public class XlsxGeneratorFilesTest {
 		// GIVEN
 		write("table.md", TABLE);
 		String missingCreator = creator(execute());
-		write("project.properties", "document.author=  \n");
+		write("document.properties", "document.author=  \n");
 
 		// WHEN
 		String blankCreator = creator(execute());

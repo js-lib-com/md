@@ -30,6 +30,8 @@ public class XlsxGenerator implements CommandHandler {
 	private static final Logger log = LoggerFactory.getLogger(XlsxGenerator.class);
 
 	private static final String PROJECT_PROPERTIES = "project.properties";
+	/** Document properties, shared with DOCX generator; only document author is used. */
+	private static final String DOCUMENT_PROPERTIES = "document.properties";
 
 	private final Parser parser;
 
@@ -44,20 +46,15 @@ public class XlsxGenerator implements CommandHandler {
 	public void execute(File documentDir) throws Exception {
 		log.trace("execute(File documentDir)");
 
-		File projectPropertiesFile = new File(documentDir, PROJECT_PROPERTIES);
-		Properties properties = new Properties();
-		if (projectPropertiesFile.exists()) {
-			// project properties is optional in which case defaults apply
-			try (Reader reader = new InputStreamReader(new FileInputStream(projectPropertiesFile), StandardCharsets.UTF_8)) {
-				properties.load(reader);
-			}
-		}
-		ProjectProperties projectProperties = new ProjectProperties(properties);
+		// project properties is optional in which case defaults apply
+		ProjectProperties projectProperties = new ProjectProperties(properties(new File(documentDir, PROJECT_PROPERTIES)));
 		File sourceDir = projectProperties.sourceDir != null ? new File(documentDir, projectProperties.sourceDir) : documentDir;
 
 		Workbook workbook = new Workbook();
-		if (projectProperties.documentAuthor != null) {
-			workbook.setAuthor(projectProperties.documentAuthor);
+		// document properties is optional; without author, workbook creator is the application name
+		String author = properties(new File(documentDir, DOCUMENT_PROPERTIES)).getProperty("document.author", "").strip();
+		if (!author.isEmpty()) {
+			workbook.setAuthor(author);
 		}
 		File[] markdownFiles = sourceDir.listFiles(file -> file.getName().endsWith(".md"));
 		if (markdownFiles == null) {
@@ -99,6 +96,17 @@ public class XlsxGenerator implements CommandHandler {
 		try (FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 			workbook.write(outputStream);
 		}
+	}
+
+	/** Load UTF-8 properties file; return empty properties if file is missing. */
+	private static Properties properties(File file) throws IOException {
+		Properties properties = new Properties();
+		if (file.exists()) {
+			try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+				properties.load(reader);
+			}
+		}
+		return properties;
 	}
 
 	/** Excel maximum column width, in characters. */
