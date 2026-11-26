@@ -56,6 +56,7 @@ public final class Workbook {
 	private String title;
 	private String subject;
 	private String keywords;
+	private String category;
 
 	/** Set workbook author; if null, application name is used as document creator. */
 	public void setAuthor(String author) {
@@ -75,6 +76,11 @@ public final class Workbook {
 	/** Set workbook keywords, displayed by Excel as tags; if null, document properties have no keywords. */
 	public void setKeywords(String keywords) {
 		this.keywords = keywords;
+	}
+
+	/** Set workbook category; if null, document properties have no category. */
+	public void setCategory(String category) {
+		this.category = category;
 	}
 
 	/** Override creation time, e.g. for reproducible output; default is workbook instance creation time. */
@@ -207,7 +213,7 @@ public final class Workbook {
 		xml.writeEndElement();
 	}
 
-	/** Core properties: creator, optional title, subject and keywords, creation and modification time. */
+	/** Core properties: creator, optional title, subject, keywords and category, creation and modification time. */
 	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setPrefix("cp", CORE_NS);
 		xml.setPrefix("dc", DC_NS);
@@ -223,6 +229,7 @@ public final class Workbook {
 		textElement(xml, DC_NS, "title", title);
 		textElement(xml, DC_NS, "subject", subject);
 		textElement(xml, CORE_NS, "keywords", keywords);
+		textElement(xml, CORE_NS, "category", category);
 		for (String element : new String[] { "created", "modified" }) {
 			xml.writeStartElement(DCTERMS_NS, element);
 			xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");

@@ -5,8 +5,8 @@ file, in file name order. Files without tables are skipped.
 
 Document directory files:
   document.properties    Optional workbook properties: document.author,
-                         default mdt, document.title, document.subject and
-                         document.keywords
+                         default mdt, document.title, document.subject,
+                         document.keywords and document.category
   project.properties     Optional project properties, see below
 
 Project properties:
