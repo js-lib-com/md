@@ -8,10 +8,12 @@ import static org.junit.Assert.assertThrows;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.Before;
@@ -116,6 +118,23 @@ public class WorkbookTest {
 		// empty column is not sized
 		assertThat(sheet.getColumnWidth(3), equalTo(-1));
 		assertThat(reload().getSheet("Sheet").getColumnWidth(1), equalTo(sheet.getColumnWidth(1)));
+	}
+
+	@Test
+	public void GivenCreationTime_WhenWrite_ThenWriteDocumentProperties() throws IOException {
+		// GIVEN
+		Instant created = Instant.parse("2026-11-26T10:15:30.500Z");
+		workbook.setCreated(created);
+
+		// WHEN
+		POIXMLProperties properties = reload().getProperties();
+
+		// THEN
+		// time is stored with seconds precision
+		assertThat(properties.getCoreProperties().getCreator(), equalTo("mdt"));
+		assertThat(properties.getCoreProperties().getCreated().toInstant(), equalTo(Instant.parse("2026-11-26T10:15:30Z")));
+		assertThat(properties.getCoreProperties().getModified().toInstant(), equalTo(Instant.parse("2026-11-26T10:15:30Z")));
+		assertThat(properties.getExtendedProperties().getApplication(), equalTo("mdt"));
 	}
 
 	private XSSFWorkbook reload() throws IOException {

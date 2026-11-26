@@ -2,6 +2,9 @@ package com.jslib.md.xlsx.xml;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -25,16 +28,33 @@ public final class Workbook {
 	private static final String REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships";
 	private static final String TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types";
 	private static final String XML_NS = "http://www.w3.org/XML/1998/namespace";
+	private static final String CORE_NS = "http://schemas.openxmlformats.org/package/2006/metadata/core-properties";
+	private static final String DC_NS = "http://purl.org/dc/elements/1.1/";
+	private static final String DCTERMS_NS = "http://purl.org/dc/terms/";
+	private static final String XSI_NS = "http://www.w3.org/2001/XMLSchema-instance";
+	private static final String EXTENDED_NS = "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties";
 
 	private static final String OFFICE_DOCUMENT_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument";
 	private static final String WORKSHEET_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet";
 	private static final String STYLES_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles";
 	private static final String SHARED_STRINGS_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings";
 	private static final String HYPERLINK_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink";
+	private static final String CORE_PROPERTIES_REL = "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties";
+	private static final String EXTENDED_PROPERTIES_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties";
+
+	/** Application name stored in document properties, used also as document creator. */
+	public static final String APPLICATION = "mdt";
 
 	private static final String CONTENT_TYPE_PREFIX = "application/vnd.openxmlformats-officedocument.spreadsheetml.";
 
 	private final List<Sheet> sheets = new ArrayList<>();
+	/** Creation time stored in document properties, with seconds precision as required by W3CDTF format. */
+	private Instant created = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+
+	/** Override creation time, e.g. for reproducible output; default is workbook instance creation time. */
+	public void setCreated(Instant created) {
+		this.created = created.truncatedTo(ChronoUnit.SECONDS);
+	}
 
 	public Sheet createSheet(String name) {
 		if (getSheet(name) != null) {
@@ -68,7 +88,12 @@ public final class Workbook {
 		Map<Object, Integer> strings = new LinkedHashMap<>();
 		try (ZipOutputStream zip = new ZipOutputStream(stream)) {
 			part(zip, "[Content_Types].xml", this::writeContentTypes);
-			part(zip, "_rels/.rels", xml -> writeRelationships(xml, Collections.singletonList(new String[] { OFFICE_DOCUMENT_REL, "xl/workbook.xml", null })));
+			part(zip, "_rels/.rels", xml -> writeRelationships(xml, List.of( //
+					new String[] { OFFICE_DOCUMENT_REL, "xl/workbook.xml", null }, //
+					new String[] { CORE_PROPERTIES_REL, "docProps/core.xml", null }, //
+					new String[] { EXTENDED_PROPERTIES_REL, "docProps/app.xml", null })));
+			part(zip, "docProps/core.xml", this::writeCoreProperties);
+			part(zip, "docProps/app.xml", this::writeExtendedProperties);
 			part(zip, "xl/workbook.xml", this::writeWorkbook);
 
 			List<String[]> relationships = new ArrayList<>();
@@ -121,6 +146,8 @@ public final class Workbook {
 		xml.writeDefaultNamespace(TYPES_NS);
 		contentType(xml, "Default", "Extension", "rels", "application/vnd.openxmlformats-package.relationships+xml");
 		contentType(xml, "Default", "Extension", "xml", "application/xml");
+		contentType(xml, "Override", "PartName", "/docProps/core.xml", "application/vnd.openxmlformats-package.core-properties+xml");
+		contentType(xml, "Override", "PartName", "/docProps/app.xml", "application/vnd.openxmlformats-officedocument.extended-properties+xml");
 		contentType(xml, "Override", "PartName", "/xl/workbook.xml", CONTENT_TYPE_PREFIX + "sheet.main+xml");
 		for (int i = 0; i < sheets.size(); ++i) {
 			contentType(xml, "Override", "PartName", "/xl/worksheets/sheet" + (i + 1) + ".xml", CONTENT_TYPE_PREFIX + "worksheet+xml");
@@ -151,6 +178,41 @@ public final class Workbook {
 				xml.writeAttribute("TargetMode", relationship[2]);
 			}
 		}
+		xml.writeEndElement();
+	}
+
+	/** Core properties: creator, creation and modification time. */
+	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
+		xml.setPrefix("cp", CORE_NS);
+		xml.setPrefix("dc", DC_NS);
+		xml.setPrefix("dcterms", DCTERMS_NS);
+		xml.setPrefix("xsi", XSI_NS);
+		xml.writeStartElement(CORE_NS, "coreProperties");
+		xml.writeNamespace("cp", CORE_NS);
+		xml.writeNamespace("dc", DC_NS);
+		xml.writeNamespace("dcterms", DCTERMS_NS);
+		xml.writeNamespace("xsi", XSI_NS);
+
+		xml.writeStartElement(DC_NS, "creator");
+		xml.writeCharacters(APPLICATION);
+		xml.writeEndElement();
+		for (String element : new String[] { "created", "modified" }) {
+			xml.writeStartElement(DCTERMS_NS, element);
+			xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");
+			xml.writeCharacters(DateTimeFormatter.ISO_INSTANT.format(created));
+			xml.writeEndElement();
+		}
+		xml.writeEndElement();
+	}
+
+	/** Extended properties: application name. */
+	private void writeExtendedProperties(XMLStreamWriter xml) throws XMLStreamException {
+		xml.setDefaultNamespace(EXTENDED_NS);
+		xml.writeStartElement(EXTENDED_NS, "Properties");
+		xml.writeDefaultNamespace(EXTENDED_NS);
+		xml.writeStartElement(EXTENDED_NS, "Application");
+		xml.writeCharacters(APPLICATION);
+		xml.writeEndElement();
 		xml.writeEndElement();
 	}
 
