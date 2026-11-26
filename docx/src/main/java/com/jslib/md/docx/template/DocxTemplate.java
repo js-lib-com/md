@@ -35,7 +35,6 @@ public class DocxTemplate {
 
 	public DocxTemplate(Properties properties) throws IOException {
 		this(DocxTemplate.class.getResourceAsStream(TEMPLATE_RESOURCE), properties);
-		log.trace("DocxTemplate(Properties properties)");
 	}
 
 	DocxTemplate(InputStream templateStream, Properties properties) throws IOException {
@@ -66,7 +65,6 @@ public class DocxTemplate {
 	}
 
 	public InputStream getInputStream() {
-		log.trace("getInputStream()");
 		return new ByteArrayInputStream(document);
 	}
 

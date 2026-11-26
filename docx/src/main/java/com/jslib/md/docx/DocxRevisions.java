@@ -27,7 +27,6 @@ public class DocxRevisions extends CustomVisitor {
 	private final int columnsCount;
 
 	public DocxRevisions(DocxDocument document) {
-		log.trace("DocxRevisions(DocxDocument document)");
 		List<Element> tables = Wml.children(document.body(), "tbl");
 		if (tables.size() < 2) {
 			throw new IllegalStateException("Invalid DOCX template. Missing revisions table.");
@@ -40,13 +39,11 @@ public class DocxRevisions extends CustomVisitor {
 
 	@Override
 	public void visit(TableHead head) {
-		log.trace("visit(TableHead head)");
 		// header row is already present in template revisions table
 	}
 
 	@Override
 	public void visit(TableRow mdRow) {
-		log.trace("visit(TableRow mdRow)");
 
 		List<String> cellTexts = new ArrayList<>();
 		for (Node cell = mdRow.getFirstChild(); cell != null; cell = cell.getNext()) {

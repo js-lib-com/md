@@ -6,12 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 
-import com.jslib.md.CommandHandler;
 import com.jslib.md.cli.Arguments.Command;
 import com.jslib.md.cli.Arguments.UsageException;
-import com.jslib.md.docx.DocxGenerator;
-import com.jslib.md.translate.Translator;
-import com.jslib.md.xlsx.XlsxGenerator;
 
 /**
  * Markdown tools command line entry point. See <code>help/mdt.txt</code> resource for usage.
@@ -60,7 +56,7 @@ public class Main {
 		}
 
 		try {
-			handler(arguments.command).execute(arguments.documentDir);
+			arguments.command.handler().execute(arguments.documentDir);
 			return EXIT_SUCCESS;
 		} catch (Exception e) {
 			err.printf("%s: error: %s%n", PROGRAM, message(e));
@@ -68,19 +64,6 @@ public class Main {
 				e.printStackTrace(err);
 			}
 			return EXIT_FAILURE;
-		}
-	}
-
-	private static CommandHandler handler(Command command) {
-		switch (command) {
-		case DOCX:
-			return new DocxGenerator();
-		case XLSX:
-			return new XlsxGenerator();
-		case TRANSLATE:
-			return new Translator();
-		default:
-			throw new IllegalStateException("Not handled command " + command);
 		}
 	}
 

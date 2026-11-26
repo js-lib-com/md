@@ -3,8 +3,6 @@ package com.jslib.md.xlsx;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.commonmark.ext.gfm.tables.TableBlock;
-import org.commonmark.ext.gfm.tables.TableBody;
 import org.commonmark.ext.gfm.tables.TableCell;
 import org.commonmark.ext.gfm.tables.TableHead;
 import org.commonmark.ext.gfm.tables.TableRow;
@@ -21,76 +19,58 @@ import com.jslib.md.xlsx.xml.Row;
 import com.jslib.md.xlsx.xml.Sheet;
 import com.jslib.md.xlsx.xml.TextRun;
 
+/** Render Markdown tables of a file into a sheet: first table header becomes sheet header, all table rows follow. */
 public class XlsxVisitor extends CustomVisitor {
 	private static final Logger log = LoggerFactory.getLogger(XlsxVisitor.class);
 
 	private final Sheet sheet;
-	private final CellStyle xlsxHeaderStyle;
-	private final CellStyle xlsxCellStyle;
+	private final CellStyle headerStyle;
+	private final CellStyle cellStyle;
 
 	/** Wrap all cells text since columns width is computed by table auto-fit. */
 	private final boolean wrapAll;
 
-	private Row xlsxRow;
-	private int xlsxRowIndex;
+	/** Current sheet row and the number of rows created so far, header included. */
+	private Row sheetRow;
+	private int rowsCount;
 
 	public XlsxVisitor(Sheet sheet, boolean tableAutoFit) {
-		super();
-		log.trace("XlsxVisitor(Sheet sheet, boolean tableAutoFit)");
 		this.sheet = sheet;
 		this.wrapAll = tableAutoFit;
 
 		Font headerFont = Font.DEFAULT.color(IndexedColor.WHITE);
-		this.xlsxHeaderStyle = CellStyle.DEFAULT.font(headerFont).fill(IndexedColor.TEAL).border().centered();
-		this.xlsxCellStyle = CellStyle.DEFAULT.border(IndexedColor.GREY_25_PERCENT);
+		this.headerStyle = CellStyle.DEFAULT.font(headerFont).fill(IndexedColor.TEAL).border().centered();
+		this.cellStyle = CellStyle.DEFAULT.border(IndexedColor.GREY_25_PERCENT);
 	}
 
-	@Override
-	public void visit(TableBlock table) {
-		log.trace("visit table block");
-		super.visit(table);
-	}
-
+	/** Only the first table header of a file is used, as sheet header; headers of next tables are skipped. */
 	@Override
 	public void visit(TableHead head) {
-		log.trace("visit table head");
-		if (xlsxRowIndex == 0) {
+		if (rowsCount == 0) {
 			super.visit(head);
 		}
 	}
 
 	@Override
-	public void visit(TableBody body) {
-		log.trace("visit table body");
-		super.visit(body);
-	}
-
-	@Override
 	public void visit(TableRow row) {
-		log.trace("visit table row");
-
-		xlsxRow = sheet.createRow();
-		++xlsxRowIndex;
-
+		sheetRow = sheet.createRow();
+		++rowsCount;
 		super.visit(row);
 	}
 
 	@Override
 	public void visit(TableCell cell) {
-		log.trace("visit table cell");
-
-		boolean header = xlsxRowIndex == 1;
+		boolean header = rowsCount == 1;
 		CellContent content = CellContent.of(cell);
 		String text = content.text();
-		log.trace("Cell text: {}", text);
 
-		Cell xlsxCell = xlsxRow.createCell();
+		Cell sheetCell = sheetRow.createCell();
 		// empty Markdown cell is left blank
 		if (!text.isEmpty()) {
 			if (content.isFormatted()) {
-				xlsxCell.setValue(richText(content, header));
+				sheetCell.setValue(richText(content, header));
 			} else {
-				xlsxCell.setValue(text);
+				sheetCell.setValue(text);
 			}
 		}
 
@@ -98,10 +78,10 @@ public class XlsxVisitor extends CustomVisitor {
 		boolean wrap = wrapAll || text.indexOf('\n') != -1;
 		// Excel cannot highlight part of a cell text so the whole cell is filled; header keeps its own fill for readability
 		boolean highlight = content.isHighlighted() && !header;
-		xlsxCell.setStyle(style(header ? xlsxHeaderStyle : xlsxCellStyle, wrap, highlight));
+		sheetCell.setStyle(style(header ? headerStyle : cellStyle, wrap, highlight));
 
 		if (content.linkDestination() != null) {
-			hyperlink(xlsxCell, content.linkDestination());
+			hyperlink(sheetCell, content.linkDestination());
 		}
 	}
 
