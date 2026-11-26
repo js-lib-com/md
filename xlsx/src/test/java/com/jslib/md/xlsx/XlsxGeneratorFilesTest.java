@@ -245,6 +245,34 @@ public class XlsxGeneratorFilesTest {
 		assertThat(blankCategory, nullValue());
 	}
 
+	@Test
+	public void GivenDocumentComments_WhenExecute_ThenWriteThemAsWorkbookDescription() throws Exception {
+		// GIVEN
+		write("document.properties", "document.comments=Generated for R&D <team> \"Iași\"\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String description = coreProperties(execute()).getDescription();
+
+		// THEN
+		assertThat(description, equalTo("Generated for R&D <team> \"Iași\""));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentComments_WhenExecute_ThenWriteNoDescription() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingDescription = coreProperties(execute()).getDescription();
+		write("document.properties", "document.comments=  \n");
+
+		// WHEN
+		String blankDescription = coreProperties(execute()).getDescription();
+
+		// THEN
+		assertThat(missingDescription, nullValue());
+		assertThat(blankDescription, nullValue());
+	}
+
 	private static POIXMLProperties.CoreProperties coreProperties(Workbook workbook) {
 		return ((XSSFWorkbook) workbook).getProperties().getCoreProperties();
 	}
