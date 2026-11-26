@@ -61,6 +61,7 @@ public final class Workbook {
 	private String status;
 	private String version;
 	private String revision;
+	private String language;
 	private String company;
 	private String manager;
 
@@ -115,6 +116,11 @@ public final class Workbook {
 			throw new IllegalArgumentException("Invalid revision " + revision + ". Expected non-negative integer.");
 		}
 		this.revision = revision;
+	}
+
+	/** Set workbook language, e.g. en-US or ro-RO; if null, document properties have no language. */
+	public void setLanguage(String language) {
+		this.language = language;
 	}
 
 	/** Set company, stored in extended document properties; if null, document properties have no company. */
@@ -257,7 +263,7 @@ public final class Workbook {
 		xml.writeEndElement();
 	}
 
-	/** Core properties: creator, optional title, subject, keywords, category, description, status, version and revision, creation and modification time. */
+	/** Core properties: creator, optional title, subject, keywords, category, description, status, version, revision and language, creation and modification time. */
 	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setPrefix("cp", CORE_NS);
 		xml.setPrefix("dc", DC_NS);
@@ -278,6 +284,7 @@ public final class Workbook {
 		textElement(xml, CORE_NS, "contentStatus", status);
 		textElement(xml, CORE_NS, "version", version);
 		textElement(xml, CORE_NS, "revision", revision);
+		textElement(xml, DC_NS, "language", language);
 		for (String element : new String[] { "created", "modified" }) {
 			xml.writeStartElement(DCTERMS_NS, element);
 			xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");

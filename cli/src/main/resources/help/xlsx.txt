@@ -9,7 +9,8 @@ Document directory files:
                          document.keywords, document.category,
                          document.comments, document.status,
                          document.version, document.revision,
-                         document.company and document.manager
+                         document.language, document.company and
+                         document.manager
   project.properties     Optional project properties, see below
 
 Project properties:

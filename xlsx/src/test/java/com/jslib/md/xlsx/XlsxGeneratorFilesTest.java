@@ -434,6 +434,34 @@ public class XlsxGeneratorFilesTest {
 		}
 	}
 
+	@Test
+	public void GivenDocumentLanguage_WhenExecute_ThenWriteItAsWorkbookLanguage() throws Exception {
+		// GIVEN
+		write("document.properties", "document.language=ro-RO\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		Optional<String> language = coreProperties(execute()).getUnderlyingProperties().getLanguageProperty();
+
+		// THEN
+		assertThat(language, equalTo(Optional.of("ro-RO")));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentLanguage_WhenExecute_ThenWriteNoLanguage() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		Optional<String> missingLanguage = coreProperties(execute()).getUnderlyingProperties().getLanguageProperty();
+		write("document.properties", "document.language=  \n");
+
+		// WHEN
+		Optional<String> blankLanguage = coreProperties(execute()).getUnderlyingProperties().getLanguageProperty();
+
+		// THEN
+		assertThat(missingLanguage, equalTo(Optional.empty()));
+		assertThat(blankLanguage, equalTo(Optional.empty()));
+	}
+
 	private static POIXMLProperties.ExtendedProperties extendedProperties(Workbook workbook) {
 		return ((XSSFWorkbook) workbook).getProperties().getExtendedProperties();
 	}
