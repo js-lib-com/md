@@ -189,6 +189,34 @@ public class XlsxGeneratorFilesTest {
 		assertThat(blankSubject, nullValue());
 	}
 
+	@Test
+	public void GivenDocumentKeywords_WhenExecute_ThenWriteThemAsWorkbookKeywords() throws Exception {
+		// GIVEN
+		write("document.properties", "document.keywords=fields, R&D, <tasks>, Iași\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String keywords = coreProperties(execute()).getKeywords();
+
+		// THEN
+		assertThat(keywords, equalTo("fields, R&D, <tasks>, Iași"));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentKeywords_WhenExecute_ThenWriteNoKeywords() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingKeywords = coreProperties(execute()).getKeywords();
+		write("document.properties", "document.keywords=  \n");
+
+		// WHEN
+		String blankKeywords = coreProperties(execute()).getKeywords();
+
+		// THEN
+		assertThat(missingKeywords, nullValue());
+		assertThat(blankKeywords, nullValue());
+	}
+
 	private static POIXMLProperties.CoreProperties coreProperties(Workbook workbook) {
 		return ((XSSFWorkbook) workbook).getProperties().getCoreProperties();
 	}

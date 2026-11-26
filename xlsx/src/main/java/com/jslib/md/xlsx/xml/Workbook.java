@@ -51,28 +51,30 @@ public final class Workbook {
 	/** Creation time stored in document properties, with seconds precision as required by W3CDTF format. */
 	private Instant created = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
-	/** Author stored in document properties as creator; null if not set. */
+	/** Optional document properties, null if not set. Author is stored as creator. */
 	private String author;
+	private String title;
+	private String subject;
+	private String keywords;
 
-	/** Set workbook author; if not set, application name is used as document creator. */
+	/** Set workbook author; if null, application name is used as document creator. */
 	public void setAuthor(String author) {
 		this.author = author;
 	}
 
-	/** Title stored in document properties; null if not set. */
-	private String title;
-
-	/** Set workbook title; if not set, document properties have no title. */
+	/** Set workbook title; if null, document properties have no title. */
 	public void setTitle(String title) {
 		this.title = title;
 	}
 
-	/** Subject stored in document properties; null if not set. */
-	private String subject;
-
-	/** Set workbook subject; if not set, document properties have no subject. */
+	/** Set workbook subject; if null, document properties have no subject. */
 	public void setSubject(String subject) {
 		this.subject = subject;
+	}
+
+	/** Set workbook keywords, displayed by Excel as tags; if null, document properties have no keywords. */
+	public void setKeywords(String keywords) {
+		this.keywords = keywords;
 	}
 
 	/** Override creation time, e.g. for reproducible output; default is workbook instance creation time. */
@@ -205,7 +207,7 @@ public final class Workbook {
 		xml.writeEndElement();
 	}
 
-	/** Core properties: creator, optional title and subject, creation and modification time. */
+	/** Core properties: creator, optional title, subject and keywords, creation and modification time. */
 	private void writeCoreProperties(XMLStreamWriter xml) throws XMLStreamException {
 		xml.setPrefix("cp", CORE_NS);
 		xml.setPrefix("dc", DC_NS);
@@ -217,19 +219,10 @@ public final class Workbook {
 		xml.writeNamespace("dcterms", DCTERMS_NS);
 		xml.writeNamespace("xsi", XSI_NS);
 
-		xml.writeStartElement(DC_NS, "creator");
-		xml.writeCharacters(author != null ? author : APPLICATION);
-		xml.writeEndElement();
-		if (title != null) {
-			xml.writeStartElement(DC_NS, "title");
-			xml.writeCharacters(title);
-			xml.writeEndElement();
-		}
-		if (subject != null) {
-			xml.writeStartElement(DC_NS, "subject");
-			xml.writeCharacters(subject);
-			xml.writeEndElement();
-		}
+		textElement(xml, DC_NS, "creator", author != null ? author : APPLICATION);
+		textElement(xml, DC_NS, "title", title);
+		textElement(xml, DC_NS, "subject", subject);
+		textElement(xml, CORE_NS, "keywords", keywords);
 		for (String element : new String[] { "created", "modified" }) {
 			xml.writeStartElement(DCTERMS_NS, element);
 			xml.writeAttribute("xsi", XSI_NS, "type", "dcterms:W3CDTF");
@@ -237,6 +230,15 @@ public final class Workbook {
 			xml.writeEndElement();
 		}
 		xml.writeEndElement();
+	}
+
+	/** Write element with text content; nothing is written if text is null. */
+	private static void textElement(XMLStreamWriter xml, String namespace, String name, String text) throws XMLStreamException {
+		if (text != null) {
+			xml.writeStartElement(namespace, name);
+			xml.writeCharacters(text);
+			xml.writeEndElement();
+		}
 	}
 
 	/** Extended properties: application name. */

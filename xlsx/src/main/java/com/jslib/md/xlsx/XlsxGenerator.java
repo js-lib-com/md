@@ -30,7 +30,7 @@ public class XlsxGenerator implements CommandHandler {
 	private static final Logger log = LoggerFactory.getLogger(XlsxGenerator.class);
 
 	private static final String PROJECT_PROPERTIES = "project.properties";
-	/** Document properties, shared with DOCX generator; only document author, title and subject are used. */
+	/** Document properties, shared with DOCX generator; only document author, title, subject and keywords are used. */
 	private static final String DOCUMENT_PROPERTIES = "document.properties";
 
 	private final Parser parser;
@@ -53,18 +53,10 @@ public class XlsxGenerator implements CommandHandler {
 		Workbook workbook = new Workbook();
 		// document properties is optional; without author, workbook creator is the application name
 		Properties documentProperties = properties(new File(documentDir, DOCUMENT_PROPERTIES));
-		String author = documentProperties.getProperty("document.author", "").strip();
-		if (!author.isEmpty()) {
-			workbook.setAuthor(author);
-		}
-		String title = documentProperties.getProperty("document.title", "").strip();
-		if (!title.isEmpty()) {
-			workbook.setTitle(title);
-		}
-		String subject = documentProperties.getProperty("document.subject", "").strip();
-		if (!subject.isEmpty()) {
-			workbook.setSubject(subject);
-		}
+		workbook.setAuthor(value(documentProperties, "document.author"));
+		workbook.setTitle(value(documentProperties, "document.title"));
+		workbook.setSubject(value(documentProperties, "document.subject"));
+		workbook.setKeywords(value(documentProperties, "document.keywords"));
 		File[] markdownFiles = sourceDir.listFiles(file -> file.getName().endsWith(".md"));
 		if (markdownFiles == null) {
 			throw new IOException("Fail to list source directory " + sourceDir);
@@ -105,6 +97,12 @@ public class XlsxGenerator implements CommandHandler {
 		try (FileOutputStream outputStream = new FileOutputStream(targetFile)) {
 			workbook.write(outputStream);
 		}
+	}
+
+	/** Property value, stripped of surrounding white spaces, or null if property is missing or blank. */
+	private static String value(Properties properties, String name) {
+		String value = properties.getProperty(name, "").strip();
+		return value.isEmpty() ? null : value;
 	}
 
 	/** Load UTF-8 properties file; return empty properties if file is missing. */
