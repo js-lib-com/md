@@ -301,6 +301,34 @@ public class XlsxGeneratorFilesTest {
 		assertThat(blankCompany, nullValue());
 	}
 
+	@Test
+	public void GivenDocumentManager_WhenExecute_ThenWriteItAsWorkbookManager() throws Exception {
+		// GIVEN
+		write("document.properties", "document.manager=R&D <lead> \"Iași\"\n");
+		write("table.md", TABLE);
+
+		// WHEN
+		String manager = extendedProperties(execute()).getManager();
+
+		// THEN
+		assertThat(manager, equalTo("R&D <lead> \"Iași\""));
+	}
+
+	@Test
+	public void GivenMissingOrBlankDocumentManager_WhenExecute_ThenWriteNoManager() throws Exception {
+		// GIVEN
+		write("table.md", TABLE);
+		String missingManager = extendedProperties(execute()).getManager();
+		write("document.properties", "document.manager=  \n");
+
+		// WHEN
+		String blankManager = extendedProperties(execute()).getManager();
+
+		// THEN
+		assertThat(missingManager, nullValue());
+		assertThat(blankManager, nullValue());
+	}
+
 	private static POIXMLProperties.ExtendedProperties extendedProperties(Workbook workbook) {
 		return ((XSSFWorkbook) workbook).getProperties().getExtendedProperties();
 	}
