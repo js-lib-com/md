@@ -19,4 +19,8 @@ Usage
   mdt --help                     general help
   mdt <command> --help           command help, including project properties
 
+Word automation, requires Microsoft Word
+  bin\update-fields.ps1 -Path document.docx   update tables of contents and figures
+  bin\save-as-pdf.ps1 -Path document.docx     save document as PDF
+
 Extra JVM options can be set with MDT_JAVA_OPTS environment variable.

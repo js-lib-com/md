@@ -19,6 +19,8 @@ cmake-build-release/
 target/
 build/
 bin/
+# command line launchers are sources
+!/cli/src/dist/bin/
 *.class
 *.jar
 *.war
@@ -46,3 +48,9 @@ release.properties
 .DS_Store
 Thumbs.db
 desktop.ini
+
+### Local scratch data, not part of the project ###
+/cli/work/
+/cli/runtime/
+/docx/work/
+/script/

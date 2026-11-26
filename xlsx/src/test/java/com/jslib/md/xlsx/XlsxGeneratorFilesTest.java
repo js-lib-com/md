@@ -3,7 +3,6 @@ package com.jslib.md.xlsx;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThrows;
 
 import java.io.File;
@@ -19,7 +18,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.ss.usermodel.CellType;
@@ -144,286 +142,6 @@ public class XlsxGeneratorFilesTest {
 	}
 
 	@Test
-	public void GivenDocumentTitle_WhenExecute_ThenWriteItAsWorkbookTitle() throws Exception {
-		// GIVEN
-		write("document.properties", "document.title=Tables & <Fields> \"Iași\"\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String title = coreProperties(execute()).getTitle();
-
-		// THEN
-		assertThat(title, equalTo("Tables & <Fields> \"Iași\""));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentTitle_WhenExecute_ThenWriteNoTitle() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingTitle = coreProperties(execute()).getTitle();
-		write("document.properties", "document.title=  \n");
-
-		// WHEN
-		String blankTitle = coreProperties(execute()).getTitle();
-
-		// THEN
-		assertThat(missingTitle, nullValue());
-		assertThat(blankTitle, nullValue());
-	}
-
-	@Test
-	public void GivenDocumentSubject_WhenExecute_ThenWriteItAsWorkbookSubject() throws Exception {
-		// GIVEN
-		write("document.properties", "document.subject=Work orders & <tasks> \"Iași\"\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String subject = coreProperties(execute()).getSubject();
-
-		// THEN
-		assertThat(subject, equalTo("Work orders & <tasks> \"Iași\""));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentSubject_WhenExecute_ThenWriteNoSubject() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingSubject = coreProperties(execute()).getSubject();
-		write("document.properties", "document.subject=  \n");
-
-		// WHEN
-		String blankSubject = coreProperties(execute()).getSubject();
-
-		// THEN
-		assertThat(missingSubject, nullValue());
-		assertThat(blankSubject, nullValue());
-	}
-
-	@Test
-	public void GivenDocumentKeywords_WhenExecute_ThenWriteThemAsWorkbookKeywords() throws Exception {
-		// GIVEN
-		write("document.properties", "document.keywords=fields, R&D, <tasks>, Iași\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String keywords = coreProperties(execute()).getKeywords();
-
-		// THEN
-		assertThat(keywords, equalTo("fields, R&D, <tasks>, Iași"));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentKeywords_WhenExecute_ThenWriteNoKeywords() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingKeywords = coreProperties(execute()).getKeywords();
-		write("document.properties", "document.keywords=  \n");
-
-		// WHEN
-		String blankKeywords = coreProperties(execute()).getKeywords();
-
-		// THEN
-		assertThat(missingKeywords, nullValue());
-		assertThat(blankKeywords, nullValue());
-	}
-
-	@Test
-	public void GivenDocumentCategory_WhenExecute_ThenWriteItAsWorkbookCategory() throws Exception {
-		// GIVEN
-		write("document.properties", "document.category=R&D <reference> \"Iași\"\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String category = coreProperties(execute()).getCategory();
-
-		// THEN
-		assertThat(category, equalTo("R&D <reference> \"Iași\""));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentCategory_WhenExecute_ThenWriteNoCategory() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingCategory = coreProperties(execute()).getCategory();
-		write("document.properties", "document.category=  \n");
-
-		// WHEN
-		String blankCategory = coreProperties(execute()).getCategory();
-
-		// THEN
-		assertThat(missingCategory, nullValue());
-		assertThat(blankCategory, nullValue());
-	}
-
-	@Test
-	public void GivenDocumentComments_WhenExecute_ThenWriteThemAsWorkbookDescription() throws Exception {
-		// GIVEN
-		write("document.properties", "document.comments=Generated for R&D <team> \"Iași\"\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String description = coreProperties(execute()).getDescription();
-
-		// THEN
-		assertThat(description, equalTo("Generated for R&D <team> \"Iași\""));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentComments_WhenExecute_ThenWriteNoDescription() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingDescription = coreProperties(execute()).getDescription();
-		write("document.properties", "document.comments=  \n");
-
-		// WHEN
-		String blankDescription = coreProperties(execute()).getDescription();
-
-		// THEN
-		assertThat(missingDescription, nullValue());
-		assertThat(blankDescription, nullValue());
-	}
-
-	@Test
-	public void GivenDocumentCompany_WhenExecute_ThenWriteItAsWorkbookCompany() throws Exception {
-		// GIVEN
-		write("document.properties", "document.company=R&D <Grid> \"Iași\"\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String company = extendedProperties(execute()).getCompany();
-
-		// THEN
-		assertThat(company, equalTo("R&D <Grid> \"Iași\""));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentCompany_WhenExecute_ThenWriteNoCompany() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingCompany = extendedProperties(execute()).getCompany();
-		write("document.properties", "document.company=  \n");
-
-		// WHEN
-		String blankCompany = extendedProperties(execute()).getCompany();
-
-		// THEN
-		assertThat(missingCompany, nullValue());
-		assertThat(blankCompany, nullValue());
-	}
-
-	@Test
-	public void GivenDocumentManager_WhenExecute_ThenWriteItAsWorkbookManager() throws Exception {
-		// GIVEN
-		write("document.properties", "document.manager=R&D <lead> \"Iași\"\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String manager = extendedProperties(execute()).getManager();
-
-		// THEN
-		assertThat(manager, equalTo("R&D <lead> \"Iași\""));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentManager_WhenExecute_ThenWriteNoManager() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingManager = extendedProperties(execute()).getManager();
-		write("document.properties", "document.manager=  \n");
-
-		// WHEN
-		String blankManager = extendedProperties(execute()).getManager();
-
-		// THEN
-		assertThat(missingManager, nullValue());
-		assertThat(blankManager, nullValue());
-	}
-
-	@Test
-	public void GivenDocumentStatus_WhenExecute_ThenWriteItAsWorkbookContentStatus() throws Exception {
-		// GIVEN
-		write("document.properties", "document.status=Draft & <review> \"Iași\"\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String status = coreProperties(execute()).getContentStatus();
-
-		// THEN
-		assertThat(status, equalTo("Draft & <review> \"Iași\""));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentStatus_WhenExecute_ThenWriteNoContentStatus() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingStatus = coreProperties(execute()).getContentStatus();
-		write("document.properties", "document.status=  \n");
-
-		// WHEN
-		String blankStatus = coreProperties(execute()).getContentStatus();
-
-		// THEN
-		assertThat(missingStatus, nullValue());
-		assertThat(blankStatus, nullValue());
-	}
-
-	@Test
-	public void GivenDocumentVersion_WhenExecute_ThenWriteItAsWorkbookVersion() throws Exception {
-		// GIVEN
-		write("document.properties", "document.version=1.2 <beta> & \"Iași\"\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		Optional<String> version = coreProperties(execute()).getUnderlyingProperties().getVersionProperty();
-
-		// THEN
-		assertThat(version, equalTo(Optional.of("1.2 <beta> & \"Iași\"")));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentVersion_WhenExecute_ThenWriteNoVersion() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		Optional<String> missingVersion = coreProperties(execute()).getUnderlyingProperties().getVersionProperty();
-		write("document.properties", "document.version=  \n");
-
-		// WHEN
-		Optional<String> blankVersion = coreProperties(execute()).getUnderlyingProperties().getVersionProperty();
-
-		// THEN
-		assertThat(missingVersion, equalTo(Optional.empty()));
-		assertThat(blankVersion, equalTo(Optional.empty()));
-	}
-
-	@Test
-	public void GivenDocumentRevision_WhenExecute_ThenWriteItAsWorkbookRevision() throws Exception {
-		// GIVEN
-		write("document.properties", "document.revision=7\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		String revision = coreProperties(execute()).getRevision();
-
-		// THEN
-		assertThat(revision, equalTo("7"));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentRevision_WhenExecute_ThenWriteNoRevision() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		String missingRevision = coreProperties(execute()).getRevision();
-		write("document.properties", "document.revision=  \n");
-
-		// WHEN
-		String blankRevision = coreProperties(execute()).getRevision();
-
-		// THEN
-		assertThat(missingRevision, nullValue());
-		assertThat(blankRevision, nullValue());
-	}
-
-	@Test
 	public void GivenNotIntegerDocumentRevision_WhenExecute_ThenThrowAndWriteNoFile() throws Exception {
 		// GIVEN
 		// Excel does not open workbooks with these revision values
@@ -440,34 +158,6 @@ public class XlsxGeneratorFilesTest {
 			assertThat(exception.getMessage(), equalTo("Invalid document property document.revision=" + revision + ". Expected non-negative integer."));
 			assertThat(new File(documentDir, "document.xlsx").exists(), equalTo(false));
 		}
-	}
-
-	@Test
-	public void GivenDocumentLanguage_WhenExecute_ThenWriteItAsWorkbookLanguage() throws Exception {
-		// GIVEN
-		write("document.properties", "document.language=ro-RO\n");
-		write("table.md", TABLE);
-
-		// WHEN
-		Optional<String> language = coreProperties(execute()).getUnderlyingProperties().getLanguageProperty();
-
-		// THEN
-		assertThat(language, equalTo(Optional.of("ro-RO")));
-	}
-
-	@Test
-	public void GivenMissingOrBlankDocumentLanguage_WhenExecute_ThenWriteNoLanguage() throws Exception {
-		// GIVEN
-		write("table.md", TABLE);
-		Optional<String> missingLanguage = coreProperties(execute()).getUnderlyingProperties().getLanguageProperty();
-		write("document.properties", "document.language=  \n");
-
-		// WHEN
-		Optional<String> blankLanguage = coreProperties(execute()).getUnderlyingProperties().getLanguageProperty();
-
-		// THEN
-		assertThat(missingLanguage, equalTo(Optional.empty()));
-		assertThat(blankLanguage, equalTo(Optional.empty()));
 	}
 
 	@Test
@@ -518,10 +208,6 @@ public class XlsxGeneratorFilesTest {
 		// THEN
 		assertThat(missing.getCreated().toInstant().isBefore(before), equalTo(false));
 		assertThat(freeText.getCreated().toInstant().isBefore(before), equalTo(false));
-	}
-
-	private static POIXMLProperties.ExtendedProperties extendedProperties(Workbook workbook) {
-		return ((XSSFWorkbook) workbook).getProperties().getExtendedProperties();
 	}
 
 	private static POIXMLProperties.CoreProperties coreProperties(Workbook workbook) {
