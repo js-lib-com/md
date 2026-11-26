@@ -14,13 +14,12 @@
 			<groupId>com.js-lib.md</groupId>
 			<artifactId>commons</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi</artifactId>
-		</dependency>
+
+		<!-- used by tests only, to read back and check generated workbooks -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>

@@ -13,12 +13,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.util.WorkbookUtil;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.commonmark.Extension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.parser.Parser;
@@ -27,6 +21,10 @@ import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CommandHandler;
 import com.jslib.md.TableColumns;
+import com.jslib.md.xlsx.xml.Cell;
+import com.jslib.md.xlsx.xml.Row;
+import com.jslib.md.xlsx.xml.Sheet;
+import com.jslib.md.xlsx.xml.Workbook;
 
 public class XlsxGenerator implements CommandHandler {
 	private static final Logger log = LoggerFactory.getLogger(XlsxGenerator.class);
@@ -57,46 +55,46 @@ public class XlsxGenerator implements CommandHandler {
 		ProjectProperties projectProperties = new ProjectProperties(properties);
 		File sourceDir = projectProperties.sourceDir != null ? new File(documentDir, projectProperties.sourceDir) : documentDir;
 
-		try (Workbook workbook = new XSSFWorkbook()) {
-			File[] markdownFiles = sourceDir.listFiles(file -> file.getName().endsWith(".md"));
-			if (markdownFiles == null) {
-				throw new IOException("Fail to list source directory " + sourceDir);
-			}
-			// sheets order follows file names
-			Arrays.sort(markdownFiles, Comparator.comparing(File::getName));
+		Workbook workbook = new Workbook();
+		File[] markdownFiles = sourceDir.listFiles(file -> file.getName().endsWith(".md"));
+		if (markdownFiles == null) {
+			throw new IOException("Fail to list source directory " + sourceDir);
+		}
+		// sheets order follows file names
+		Arrays.sort(markdownFiles, Comparator.comparing(File::getName));
 
-			for (File markdownFile : markdownFiles) {
-				log.debug("Process markdown file {}", markdownFile);
-				String fileName = markdownFile.getName();
-				Sheet sheet = workbook.createSheet(sheetName(workbook, fileName.substring(0, fileName.length() - 3)));
-				try (InputStreamReader reader = new InputStreamReader(new FileInputStream(markdownFile), StandardCharsets.UTF_8)) {
-					XlsxVisitor visitor = new XlsxVisitor(sheet, projectProperties.tableAutoFit);
-					parser.parseReader(reader).accept(visitor);
-				}
-
-				Row headerRow = sheet.getRow(0);
-				if (headerRow == null) {
-					log.warn("Skip markdown file without table {}", markdownFile);
-					workbook.removeSheetAt(workbook.getSheetIndex(sheet));
-					continue;
-				}
-				if (projectProperties.tableAutoFit) {
-					autoFit(sheet, headerRow.getLastCellNum(), projectProperties);
-				} else {
-					for (int columnIndex = 0; columnIndex < headerRow.getLastCellNum(); columnIndex++) {
-						sheet.autoSizeColumn(columnIndex);
-					}
-				}
-			}
-			if (workbook.getNumberOfSheets() == 0) {
-				log.warn("No markdown tables found in {}", sourceDir);
+		for (File markdownFile : markdownFiles) {
+			log.debug("Process markdown file {}", markdownFile);
+			String fileName = markdownFile.getName();
+			Sheet sheet = workbook.createSheet(sheetName(workbook, fileName.substring(0, fileName.length() - 3)));
+			try (InputStreamReader reader = new InputStreamReader(new FileInputStream(markdownFile), StandardCharsets.UTF_8)) {
+				XlsxVisitor visitor = new XlsxVisitor(sheet, projectProperties.tableAutoFit);
+				parser.parseReader(reader).accept(visitor);
 			}
 
-			File targetFile = new File(documentDir, projectProperties.fileName + ".xlsx");
-			log.info("Generate {}", targetFile);
-			try (FileOutputStream outputStream = new FileOutputStream(targetFile)) {
-				workbook.write(outputStream);
+			Row headerRow = sheet.getRow(0);
+			if (headerRow == null) {
+				log.warn("Skip markdown file without table {}", markdownFile);
+				workbook.removeSheet(sheet);
+				continue;
 			}
+			int columnsCount = headerRow.getCells().size();
+			if (projectProperties.tableAutoFit) {
+				autoFit(sheet, columnsCount, projectProperties);
+			} else {
+				for (int columnIndex = 0; columnIndex < columnsCount; columnIndex++) {
+					sheet.autoSizeColumn(columnIndex);
+				}
+			}
+		}
+		if (workbook.getSheets().isEmpty()) {
+			log.warn("No markdown tables found in {}", sourceDir);
+		}
+
+		File targetFile = new File(documentDir, projectProperties.fileName + ".xlsx");
+		log.info("Generate {}", targetFile);
+		try (FileOutputStream outputStream = new FileOutputStream(targetFile)) {
+			workbook.write(outputStream);
 		}
 	}
 
@@ -109,11 +107,11 @@ public class XlsxGenerator implements CommandHandler {
 	 */
 	static void autoFit(Sheet sheet, int columnsCount, ProjectProperties projectProperties) {
 		List<List<String>> texts = new ArrayList<>();
-		for (Row row : sheet) {
+		for (Row row : sheet.getRows()) {
 			List<String> rowTexts = new ArrayList<>();
 			for (int column = 0; column < columnsCount; ++column) {
 				Cell cell = row.getCell(column);
-				rowTexts.add(cell != null ? cell.getStringCellValue() : "");
+				rowTexts.add(cell != null ? cell.getText() : "");
 			}
 			texts.add(rowTexts);
 		}
@@ -131,7 +129,7 @@ public class XlsxGenerator implements CommandHandler {
 	 * Excel maximum of 31 characters and a numeric suffix is added if the name is already used.
 	 */
 	static String sheetName(Workbook workbook, String baseName) {
-		String safeName = WorkbookUtil.createSafeSheetName(baseName, '_');
+		String safeName = safeSheetName(baseName);
 		String name = safeName;
 		// sheet names are case-insensitive and so is workbook sheet lookup
 		for (int index = 2; workbook.getSheet(name) != null; ++index) {
@@ -142,4 +140,23 @@ public class XlsxGenerator implements CommandHandler {
 	}
 
 	private static final int MAX_SHEET_NAME_LENGTH = 31;
+
+	/**
+	 * Truncate name to Excel maximum sheet name length and replace characters not allowed in sheet names by underscore,
+	 * including apostrophe on first or last position.
+	 */
+	static String safeSheetName(String name) {
+		if (name.isEmpty()) {
+			return "empty";
+		}
+		StringBuilder safeName = new StringBuilder(name.substring(0, Math.min(name.length(), MAX_SHEET_NAME_LENGTH)));
+		for (int i = 0; i < safeName.length(); ++i) {
+			char c = safeName.charAt(i);
+			boolean edge = i == 0 || i == safeName.length() - 1;
+			if ("/\\?*[]:".indexOf(c) != -1 || (c == '\'' && edge)) {
+				safeName.setCharAt(i, '_');
+			}
+		}
+		return safeName.toString();
+	}
 }

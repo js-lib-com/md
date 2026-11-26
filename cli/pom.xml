@@ -26,15 +26,10 @@
 			<artifactId>gson</artifactId>
 		</dependency>
 
-		<!-- logging implementation for command line; POI logs through log4j API, routed to SLF4J -->
+		<!-- logging implementation for command line -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-to-slf4j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 	</dependencies>

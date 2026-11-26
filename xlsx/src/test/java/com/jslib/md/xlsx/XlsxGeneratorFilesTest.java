@@ -87,6 +87,22 @@ public class XlsxGeneratorFilesTest {
 		assertThat(sheetNames(workbook), contains(truncated, truncated.substring(0, 27) + " (2)", "c_1_"));
 	}
 
+	@Test
+	public void GivenNamesWithApostropheAndForbiddenChars_WhenSafeSheetName_ThenReplaceByUnderscore() {
+		// GIVEN
+		String[] names = { "'quoted'", "it's", "a/b\\c?d*e[f]g:h", "" };
+
+		// WHEN
+		List<String> safeNames = new ArrayList<>();
+		for (String name : names) {
+			safeNames.add(XlsxGenerator.safeSheetName(name));
+		}
+
+		// THEN
+		// apostrophe is allowed only inside name
+		assertThat(safeNames, contains("_quoted_", "it's", "a_b_c_d_e_f_g_h", "empty"));
+	}
+
 	private void write(String fileName, String content) throws IOException {
 		Files.write(new File(documentDir, fileName).toPath(), content.getBytes(StandardCharsets.UTF_8));
 	}
