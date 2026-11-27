@@ -16,10 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.jslib.md.CommandHandler;
+import com.jslib.md.DocumentDefaults;
 import com.jslib.md.DocumentSources;
 import com.jslib.md.Markdown;
 import com.jslib.md.ProjectProperties;
-import com.jslib.md.PropertiesFile;
 import com.jslib.md.docx.template.DocxTemplate;
 
 /**
@@ -43,15 +43,7 @@ public class DocxGenerator implements CommandHandler {
 	private void generate(File documentDir, ProjectProperties projectProperties, String language) throws IOException {
 		DocumentSources sources = new DocumentSources(documentDir, projectProperties, language);
 
-		File documentPropertiesFile = sources.documentProperties();
-		if (!documentPropertiesFile.isFile()) {
-			throw new FileNotFoundException("Missing document properties file " + documentPropertiesFile);
-		}
-		Properties documentProperties = PropertiesFile.load(documentPropertiesFile);
-		File revisionsFile = sources.revisions();
-		if (!revisionsFile.isFile()) {
-			throw new FileNotFoundException("Missing document revisions file " + revisionsFile);
-		}
+		Properties documentProperties = DocumentDefaults.load(documentDir, sources);
 		for (File unlisted : sources.unlistedSources()) {
 			log.warn("Source file {} is not listed by source.files project property; it is not included in document.", unlisted);
 		}
@@ -59,7 +51,10 @@ public class DocxGenerator implements CommandHandler {
 
 		DocxVisitor documentVisitor = new DocxVisitor(new DocxTemplate(documentProperties), projectProperties, documentDir);
 		documentVisitor.setFigureLabel(documentProperties.getProperty("figure.label", DocxVisitor.DEFAULT_FIGURE_LABEL));
-		parser.parse(Files.readString(revisionsFile.toPath(), UTF_8)).accept(new DocxRevisions(documentVisitor.getDocument()));
+		File revisionsFile = sources.revisions();
+		if (revisionsFile.isFile()) {
+			parser.parse(Files.readString(revisionsFile.toPath(), UTF_8)).accept(new DocxRevisions(documentVisitor.getDocument()));
+		}
 		parser.parse(markdown).accept(documentVisitor);
 
 		File targetFile = new File(documentDir, DocumentSources.localize(projectProperties.fileName + ".docx", language));

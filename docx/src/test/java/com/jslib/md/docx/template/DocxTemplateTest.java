@@ -39,7 +39,7 @@ public class DocxTemplateTest {
 	}
 
 	@Test
-	public void GivenMissingVariable_WhenInject_ThenReplaceWithName() {
+	public void GivenMissingVariable_WhenInject_ThenReplaceWithEmptyText() {
 		// GIVEN
 		String source = "<w:t>{{document.title}}</w:t>";
 
@@ -47,7 +47,7 @@ public class DocxTemplateTest {
 		String xml = DocxTemplate.inject(source, properties);
 
 		// THEN
-		assertThat(xml, equalTo("<w:t>document.title</w:t>"));
+		assertThat(xml, equalTo("<w:t></w:t>"));
 	}
 
 	@Test

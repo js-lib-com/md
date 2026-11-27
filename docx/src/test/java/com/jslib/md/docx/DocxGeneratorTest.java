@@ -4,9 +4,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
+import static org.junit.Assert.assertThrows;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +31,7 @@ public class DocxGeneratorTest {
 	}
 
 	@After
+	@SuppressWarnings("ResultOfMethodCallIgnored")
 	public void afterTest() throws IOException {
 		try (Stream<Path> paths = Files.walk(documentDir.toPath())) {
 			paths.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
@@ -57,6 +60,32 @@ public class DocxGeneratorTest {
 		assertThat(translation, not(containsString("Usage")));
 	}
 
+	@Test
+	public void GivenOnlyMarkdownFiles_WhenExecute_ThenMergeFilesInNaturalOrderWithInferredProperties() throws Exception {
+		// GIVEN
+		write("10-usage.md", "# Usage");
+		write("2-intro.md", "# Intro");
+
+		// WHEN
+		new DocxGenerator().execute(documentDir);
+
+		// THEN
+		String text = text("document.docx");
+		assertThat(text.indexOf("Intro") < text.indexOf("Usage"), equalTo(true));
+		assertThat(text, not(containsString("document.title")));
+		assertThat(text, not(containsString("company.name")));
+	}
+
+	@Test
+	public void GivenNoMarkdownFiles_WhenExecute_ThenThrowMissingDocument() {
+		// WHEN
+		FileNotFoundException exception = assertThrows(FileNotFoundException.class, () -> new DocxGenerator().execute(documentDir));
+
+		// THEN
+		assertThat(exception.getMessage(), containsString("document.md"));
+	}
+
+	@SuppressWarnings("ResultOfMethodCallIgnored")
 	private void write(String name, String content) throws IOException {
 		File file = new File(documentDir, name);
 		file.getParentFile().mkdirs();

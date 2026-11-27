@@ -121,7 +121,8 @@ public class DocumentSourcesTest {
 		// THEN
 		assertThat(revisions.getName(), equalTo("revisions_ro.md"));
 		assertThat(documentProperties.getName(), equalTo("document.properties"));
-		assertThat(names(markdownSources), contains("document_ro.md"));
+		// no document_ro.md, so translated markdown files from document directory are merged
+		assertThat(names(markdownSources), contains("01-intro_ro.md", "02-install_ro.md", "03-usage_ro.md"));
 	}
 
 	@Test
@@ -214,6 +215,38 @@ public class DocumentSourcesTest {
 
 		// THEN
 		assertThat(unlisted, empty());
+	}
+
+	@Test
+	public void GivenNoDocumentFile_WhenMarkdownSources_ThenMergeDocumentDirectoryFiles() throws IOException {
+		// GIVEN
+		Properties properties = new Properties();
+		properties.setProperty("languages", "ro, de");
+		DocumentSources sources = new DocumentSources(sourceDir, new ProjectProperties(properties));
+		DocumentSources deSources = new DocumentSources(sourceDir, new ProjectProperties(properties), "de");
+
+		// WHEN
+		List<File> files = sources.markdownSources();
+		List<File> deFiles = deSources.markdownSources();
+
+		// THEN
+		assertThat(names(files), contains("01-intro.md", "02-install.md", "03-usage.md"));
+		assertThat(names(deFiles), contains("02-install_de.md"));
+	}
+
+	@Test
+	public void GivenDocumentFile_WhenMarkdownSources_ThenDocumentFileOnly() throws IOException {
+		// GIVEN
+		if (!new File(sourceDir, "document.md").createNewFile()) {
+			throw new IOException("Could not create document file");
+		}
+		DocumentSources sources = new DocumentSources(sourceDir, ProjectProperties.empty());
+
+		// WHEN
+		List<File> files = sources.markdownSources();
+
+		// THEN
+		assertThat(names(files), contains("document.md"));
 	}
 
 	private static List<String> names(List<File> files) {

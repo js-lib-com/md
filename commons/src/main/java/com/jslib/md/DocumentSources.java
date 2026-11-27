@@ -12,10 +12,12 @@ import java.util.stream.Collectors;
  * Source files of a document directory, for the default language or a translation language. This class is the single
  * place that knows the document directory layout:
  * <ul>
- * <li><code>document.properties</code> - document properties, e.g. title and author,
- * <li><code>revisions.md</code> - revisions table,
+ * <li><code>document.properties</code> - optional document properties, e.g. title and author, see
+ * {@link DocumentDefaults},
+ * <li><code>revisions.md</code> - optional revisions table,
  * <li><code>document.md</code> - document source, if neither <code>source.dir</code> nor <code>source.files</code>
- * project properties are set,
+ * project properties are set; if missing, all markdown files from document directory are merged in natural file name
+ * order,
  * <li><code>source.dir/*.md</code> - chapter sources, merged in natural file name order, if <code>source.dir</code> is set,
  * <li><code>source.files</code> - chapter sources, merged in listed order, relative to <code>source.dir</code> if set,
  * otherwise to document directory.
@@ -66,8 +68,9 @@ public final class DocumentSources {
 
 	/**
 	 * Markdown document sources for language: files from <code>source.files</code>, in listed order, if set; otherwise
-	 * chapter files from <code>source.dir</code>, sorted by natural name order, if set; otherwise the single document file. Listed
-	 * files and the single document file may not exist.
+	 * chapter files from <code>source.dir</code>, sorted by natural name order, if set; otherwise the single document
+	 * file, if exists, or markdown files from document directory, sorted by natural name order. Listed files may not
+	 * exist; the single document file is returned, even if missing, when document directory has no markdown files.
 	 */
 	public List<File> markdownSources() throws IOException {
 		if (!projectProperties.sourceFiles.isEmpty()) {
@@ -75,7 +78,13 @@ public final class DocumentSources {
 			return projectProperties.sourceFiles.stream().map(name -> localize(new File(sourceDir, name), language)).collect(Collectors.toList());
 		}
 		if (projectProperties.sourceDir == null) {
-			return List.of(new File(documentDir, localize(DOCUMENT, language)));
+			File document = new File(documentDir, localize(DOCUMENT, language));
+			if (document.exists()) {
+				return List.of(document);
+			}
+			List<File> files = chapters(documentDir, language, projectProperties.languages);
+			// return missing document file so that caller reports it
+			return files.isEmpty() ? List.of(document) : files;
 		}
 		return chapters(sourceDir(), language, projectProperties.languages);
 	}
@@ -88,7 +97,7 @@ public final class DocumentSources {
 		if (projectProperties.sourceFiles.isEmpty()) {
 			return List.of();
 		}
-		List<Path> listed = markdownSources().stream().map(DocumentSources::normalize).collect(Collectors.toList());
+		List<Path> listed = markdownSources().stream().map(DocumentSources::normalize).toList();
 		return chapters(sourceDir(), language, projectProperties.languages).stream() //
 				.filter(file -> !listed.contains(normalize(file))) //
 				.collect(Collectors.toList());

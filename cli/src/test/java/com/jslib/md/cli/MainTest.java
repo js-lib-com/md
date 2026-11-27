@@ -101,7 +101,7 @@ public class MainTest {
 	}
 
 	@Test
-	public void GivenMissingDocumentFiles_WhenRunDocx_ThenPrintErrorAndExitWithFailureCode() {
+	public void GivenNoMarkdownFiles_WhenRunDocx_ThenPrintErrorAndExitWithFailureCode() {
 		// GIVEN
 		String[] args = { "docx", dir.getPath() };
 
@@ -110,13 +110,13 @@ public class MainTest {
 
 		// THEN
 		assertThat(exitCode, equalTo(Main.EXIT_FAILURE));
-		assertThat(err(), startsWith("mdt: error: Missing document properties file "));
+		assertThat(err(), startsWith("mdt: error: Missing source file "));
 	}
 
 	@Test
 	public void GivenMarkdownTable_WhenRunXlsx_ThenGenerateWorkbook() throws IOException {
 		// GIVEN
-		Files.write(new File(dir, "table.md").toPath(), "|a|b|\n|-|-|\n|1|2|\n".getBytes(UTF_8));
+		Files.writeString(new File(dir, "table.md").toPath(), "|a|b|\n|-|-|\n|1|2|\n");
 		String[] args = { "xlsx", dir.getPath(), "-q" };
 
 		// WHEN

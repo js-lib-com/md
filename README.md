@@ -27,13 +27,19 @@ Generators write OOXML directly; Apache POI is used only by tests, to read back 
 ```
 document-dir/
   project.properties     optional project properties, e.g. file.name, source.dir, source.files, languages
-  document.properties    document properties, e.g. document.title, document.author
-  revisions.md           revisions table
-  document.md            document source, if neither source.dir nor source.files is set
+  document.properties    optional document properties, e.g. document.title, document.author
+  revisions.md           optional revisions table
+  document.md            document source, if neither source.dir nor source.files is set;
+                         if missing, all *.md files are merged in natural file name order
   <source.dir>/*.md      chapter sources, merged in natural file name order, if source.dir is set
   <source.files>         chapter sources, merged in listed order, relative to source.dir if set
   *_<lang>.*             translations, e.g. document_ro.md, revisions_ro.md, document_ro.properties
 ```
+
+All files are optional: `mdt docx` run in a directory with only Markdown files merges them into one document. Missing
+`document.title` is inferred from directory name, e.g. `user-guide` to "User Guide", `document.author` and
+`document.date` from the newest, i.e. last, revisions row, otherwise from operating system user name and today; other
+missing template variables are left empty.
 
 `commons/src/main/java/com/jslib/md/DocumentSources.java` is the single place that resolves these files. See
 `mdt docx --help`, `mdt xlsx --help` and `mdt translate --help` for the properties every command uses.

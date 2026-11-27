@@ -60,7 +60,7 @@ public class DocxTemplate {
 		this.document = buffer.toByteArray();
 
 		if (!missingVariables.isEmpty()) {
-			log.warn("Missing values for template variables, replaced by variable names: {}", String.join(", ", missingVariables));
+			log.warn("Missing values for template variables, left empty: {}", String.join(", ", missingVariables));
 		}
 	}
 
@@ -72,7 +72,10 @@ public class DocxTemplate {
 		return inject(xml, properties, new TreeSet<>());
 	}
 
-	/** Replace variables in XML text; names of variables without value are collected in missing variables set. */
+	/**
+	 * Replace variables in XML text; variables without value are replaced by empty text and their names are collected in
+	 * missing variables set.
+	 */
 	static String inject(String xml, Properties properties, Set<String> missingVariables) {
 		Matcher matcher = VARIABLE.matcher(xml);
 		StringBuilder builder = new StringBuilder();
@@ -81,7 +84,7 @@ public class DocxTemplate {
 			String value = properties.getProperty(name);
 			if (value == null) {
 				missingVariables.add(name);
-				value = name;
+				value = "";
 			}
 			log.debug("Replace variable value: {}: {}", name, value);
 			matcher.appendReplacement(builder, Matcher.quoteReplacement(Wml.escapeXml(value)));
