@@ -15,7 +15,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import com.jslib.md.CommandHandler;
 import com.jslib.md.DocumentSources;
 import com.jslib.md.Markdown;
+import com.jslib.md.NaturalOrder;
 import com.jslib.md.ProjectProperties;
 import com.jslib.md.PropertiesFile;
 import com.jslib.md.TableColumns;
@@ -79,8 +79,8 @@ public class XlsxGenerator implements CommandHandler {
 		if (markdownFiles == null) {
 			throw new IOException("Fail to list source directory " + sourceDir);
 		}
-		// sheets order follows file names
-		Arrays.sort(markdownFiles, Comparator.comparing(File::getName));
+		// sheets order follows file names natural order
+		Arrays.sort(markdownFiles, NaturalOrder.FILES);
 
 		for (File markdownFile : markdownFiles) {
 			log.debug("Process markdown file {}", markdownFile);

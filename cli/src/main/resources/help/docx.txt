@@ -12,7 +12,8 @@ Document directory files:
 
 Project properties:
   file.name               Generated file name, without extension; default document
-  source.dir              Directory with chapter sources, merged in file name order
+  source.dir              Directory with chapter sources, merged in natural file
+                          name order, e.g. 2-install.md before 10-usage.md
   source.files            Comma separated chapter sources, merged in listed order,
                           relative to source.dir or document directory; overrides
                           file name order; use \ at line end to continue the list

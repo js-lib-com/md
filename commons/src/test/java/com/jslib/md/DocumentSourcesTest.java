@@ -72,6 +72,22 @@ public class DocumentSourcesTest {
 	}
 
 	@Test
+	public void GivenNumericPrefixesWithoutPadding_WhenChapters_ThenNaturalOrder() throws IOException {
+		// GIVEN
+		for (String name : new String[]{"10-appendix.md", "4-faq.md"}) {
+			if (!new File(sourceDir, name).createNewFile()) {
+				throw new IOException("Could not create file " + name);
+			}
+		}
+
+		// WHEN
+		List<File> files = DocumentSources.chapters(sourceDir, null, LANGUAGES);
+
+		// THEN
+		assertThat(names(files), contains("01-intro.md", "02-install.md", "03-usage.md", "4-faq.md", "10-appendix.md"));
+	}
+
+	@Test
 	public void GivenMissingDirectory_WhenChapters_ThenThrow() {
 		// GIVEN
 		File missingDirectory = new File(sourceDir, "missing");

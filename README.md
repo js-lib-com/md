@@ -30,7 +30,7 @@ document-dir/
   document.properties    document properties, e.g. document.title, document.author
   revisions.md           revisions table
   document.md            document source, if neither source.dir nor source.files is set
-  <source.dir>/*.md      chapter sources, merged in file name order, if source.dir is set
+  <source.dir>/*.md      chapter sources, merged in natural file name order, if source.dir is set
   <source.files>         chapter sources, merged in listed order, relative to source.dir if set
   *_<lang>.*             translations, e.g. document_ro.md, revisions_ro.md, document_ro.properties
 ```

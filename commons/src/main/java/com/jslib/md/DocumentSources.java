@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,7 +16,7 @@ import java.util.stream.Collectors;
  * <li><code>revisions.md</code> - revisions table,
  * <li><code>document.md</code> - document source, if neither <code>source.dir</code> nor <code>source.files</code>
  * project properties are set,
- * <li><code>source.dir/*.md</code> - chapter sources, merged in file name order, if <code>source.dir</code> is set,
+ * <li><code>source.dir/*.md</code> - chapter sources, merged in natural file name order, if <code>source.dir</code> is set,
  * <li><code>source.files</code> - chapter sources, merged in listed order, relative to <code>source.dir</code> if set,
  * otherwise to document directory.
  * </ul>
@@ -67,7 +66,7 @@ public final class DocumentSources {
 
 	/**
 	 * Markdown document sources for language: files from <code>source.files</code>, in listed order, if set; otherwise
-	 * chapter files from <code>source.dir</code>, sorted by name, if set; otherwise the single document file. Listed
+	 * chapter files from <code>source.dir</code>, sorted by natural name order, if set; otherwise the single document file. Listed
 	 * files and the single document file may not exist.
 	 */
 	public List<File> markdownSources() throws IOException {
@@ -110,7 +109,7 @@ public final class DocumentSources {
 	}
 
 	/**
-	 * Markdown chapter files for requested language, sorted by name; revisions files are excluded. For default language,
+	 * Markdown chapter files for requested language, sorted by natural name order; revisions files are excluded. For default language,
 	 * i.e. null language argument, exclude files translated to any of the configured languages.
 	 */
 	static List<File> chapters(File sourceDir, String language, List<String> languages) throws IOException {
@@ -127,7 +126,7 @@ public final class DocumentSources {
 		if (files == null) {
 			throw new IOException("Fail to list source directory " + sourceDir);
 		}
-		Arrays.sort(files, Comparator.comparing(File::getName));
+		Arrays.sort(files, NaturalOrder.FILES);
 		return List.of(files);
 	}
 

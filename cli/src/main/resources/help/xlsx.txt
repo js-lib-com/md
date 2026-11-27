@@ -1,7 +1,7 @@
 Usage: mdt xlsx [options] [document-dir]
 
 Generate an Excel workbook (.xlsx) from markdown tables, one sheet per markdown
-file, in file name order. Files without tables are skipped.
+file, in natural file name order. Files without tables are skipped.
 
 Document directory files:
   document.properties    Optional workbook properties: document.author,
