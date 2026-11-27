@@ -120,8 +120,22 @@ public class DocxTableTest {
 	}
 
 	@Test
+	public void GivenAutoFitNotSet_WhenVisitTable_ThenAutoFitColumns() throws Exception {
+		// GIVEN
+		String markdown = TABLE;
+
+		// WHEN
+		XWPFTable table = table(markdown);
+
+		// THEN
+		assertThat(table.getRow(1).getCell(0).getCTTc().getTcPr().isSetTcW(), equalTo(true));
+		assertThat(table.getRow(1).getCell(0).getCTTc().getTcPr().isSetNoWrap(), equalTo(false));
+	}
+
+	@Test
 	public void GivenAutoFitDisabled_WhenVisitTable_ThenKeepNoWrapColumns() throws Exception {
 		// GIVEN
+		properties.setProperty("table.auto.fit", "false");
 		String markdown = TABLE;
 
 		// WHEN

@@ -89,6 +89,8 @@ public class XlsxInlineFormattingTest {
 	@Test
 	public void GivenPlainText_WhenExecute_ThenDoNotWrapNorApplyFontRuns() throws Exception {
 		// GIVEN
+		// table auto-fit wraps all cells, so it is disabled to check that plain text alone does not wrap
+		Files.writeString(new File(documentDir, "project.properties").toPath(), "table.auto.fit=false\n");
 		String content = "plain <span>text</span>";
 
 		// WHEN

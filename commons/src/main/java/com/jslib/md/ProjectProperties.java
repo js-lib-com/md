@@ -38,7 +38,7 @@ public final class ProjectProperties {
 	public final boolean imageShadow;
 	/** Style links as hyperlinks. Used by docx. */
 	public final boolean linkEnabled;
-	/** Compute table columns width from the quantity of text in every column. */
+	/** Compute table columns width from the quantity of text in every column; default true. */
 	public final boolean tableAutoFit;
 	/** Minimal table column width, in percent, used when table auto-fit is enabled. */
 	public final int tableColumnMinWidth;
@@ -54,7 +54,7 @@ public final class ProjectProperties {
 		this.fileName = properties.getProperty("file.name", "document");
 		this.imageShadow = Boolean.parseBoolean(properties.getProperty("image.shadow"));
 		this.linkEnabled = Boolean.parseBoolean(properties.getProperty("link.enabled"));
-		this.tableAutoFit = Boolean.parseBoolean(properties.getProperty("table.auto.fit"));
+		this.tableAutoFit = Boolean.parseBoolean(properties.getProperty("table.auto.fit", "true"));
 		this.tableColumnMinWidth = integer(properties, "table.column.min.width", 10, 0, 100);
 		this.tableColumnOutliers = integer(properties, "table.column.outliers", 20, 0, 50);
 		this.xlsxTableWidth = integer(properties, "xlsx.table.width", 100, 10, 2000);

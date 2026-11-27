@@ -27,7 +27,7 @@ Project properties:
   languages               Comma separated languages, e.g. ro; one document per language
   image.shadow            Add shadow to images; default false
   link.enabled            Style links as hyperlinks; default false
-  table.auto.fit          Compute columns width from text quantity; default false
+  table.auto.fit          Compute columns width from text quantity; default true
   table.column.min.width  Minimal column width, in percent; default 10
   table.column.outliers   Percent of cells ignored at each end; default 20
 

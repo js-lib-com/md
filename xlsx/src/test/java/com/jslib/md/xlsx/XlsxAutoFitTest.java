@@ -128,9 +128,21 @@ public class XlsxAutoFitTest {
 	}
 
 	@Test
-	public void GivenAutoFitDisabled_WhenExecute_ThenDoNotWrap() throws Exception {
+	public void GivenAutoFitNotSet_WhenExecute_ThenWrap() throws Exception {
 		// GIVEN
 		String projectProperties = "";
+
+		// WHEN
+		Sheet sheet = generate(projectProperties, TABLE);
+
+		// THEN
+		assertThat(sheet.getRow(1).getCell(1).getCellStyle().getWrapText(), equalTo(true));
+	}
+
+	@Test
+	public void GivenAutoFitDisabled_WhenExecute_ThenDoNotWrap() throws Exception {
+		// GIVEN
+		String projectProperties = "table.auto.fit=false\n";
 
 		// WHEN
 		Sheet sheet = generate(projectProperties, TABLE);

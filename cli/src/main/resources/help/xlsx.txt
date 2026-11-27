@@ -18,7 +18,7 @@ Document directory files:
 Project properties:
   file.name               Generated file name, without extension; default document
   source.dir              Directory with markdown files; default document directory
-  table.auto.fit          Compute columns width from text quantity; default false
+  table.auto.fit          Compute columns width from text quantity; default true
   table.column.min.width  Minimal column width, in percent; default 10
   table.column.outliers   Percent of cells ignored at each end; default 20
   xlsx.table.width        Total table width, in characters; default 100
