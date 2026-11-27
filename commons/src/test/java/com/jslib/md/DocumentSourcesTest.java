@@ -2,6 +2,7 @@ package com.jslib.md;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertThrows;
@@ -120,6 +121,83 @@ public class DocumentSourcesTest {
 
 		// THEN
 		assertThat(names(files), contains("01-intro.md", "02-install.md", "03-usage.md", "revisions.md", "document.properties"));
+	}
+
+	@Test
+	public void GivenSourceFiles_WhenMarkdownSources_ThenListedOrder() throws IOException {
+		// GIVEN
+		Properties properties = new Properties();
+		properties.setProperty("source.files", "03-usage.md, 01-intro.md");
+		DocumentSources sources = new DocumentSources(sourceDir, new ProjectProperties(properties));
+
+		// WHEN
+		List<File> files = sources.markdownSources();
+
+		// THEN
+		assertThat(names(files), contains("03-usage.md", "01-intro.md"));
+		assertThat(files.get(0).getParentFile(), equalTo(sourceDir));
+	}
+
+	@Test
+	public void GivenSourceFilesAndLanguage_WhenMarkdownSources_ThenLocalizedListedOrder() throws IOException {
+		// GIVEN
+		Properties properties = new Properties();
+		properties.setProperty("source.files", "03-usage.md,01-intro.md");
+		properties.setProperty("languages", "ro, de");
+		DocumentSources sources = new DocumentSources(sourceDir, new ProjectProperties(properties), "ro");
+
+		// WHEN
+		List<File> files = sources.markdownSources();
+
+		// THEN
+		assertThat(names(files), contains("03-usage_ro.md", "01-intro_ro.md"));
+	}
+
+	@Test
+	public void GivenSourceFilesAndSourceDir_WhenMarkdownSources_ThenResolveAgainstSourceDir() throws IOException {
+		// GIVEN
+		Properties properties = new Properties();
+		properties.setProperty("source.dir", "chapters");
+		properties.setProperty("source.files", "intro.md");
+		DocumentSources sources = new DocumentSources(sourceDir, new ProjectProperties(properties));
+
+		// WHEN
+		List<File> files = sources.markdownSources();
+
+		// THEN
+		assertThat(files, contains(new File(new File(sourceDir, "chapters"), "intro.md")));
+	}
+
+	@Test
+	public void GivenSourceFiles_WhenUnlistedSources_ThenReturnChaptersNotListed() throws IOException {
+		// GIVEN
+		Properties properties = new Properties();
+		properties.setProperty("source.files", "./03-usage.md, 01-intro.md");
+		properties.setProperty("languages", "ro, de");
+		DocumentSources sources = new DocumentSources(sourceDir, new ProjectProperties(properties));
+		DocumentSources roSources = new DocumentSources(sourceDir, new ProjectProperties(properties), "ro");
+
+		// WHEN
+		List<File> unlisted = sources.unlistedSources();
+		List<File> roUnlisted = roSources.unlistedSources();
+
+		// THEN
+		assertThat(names(unlisted), contains("02-install.md"));
+		assertThat(names(roUnlisted), contains("02-install_ro.md"));
+	}
+
+	@Test
+	public void GivenNoSourceFiles_WhenUnlistedSources_ThenEmpty() throws IOException {
+		// GIVEN
+		Properties properties = new Properties();
+		properties.setProperty("source.dir", ".");
+		DocumentSources sources = new DocumentSources(sourceDir, new ProjectProperties(properties));
+
+		// WHEN
+		List<File> unlisted = sources.unlistedSources();
+
+		// THEN
+		assertThat(unlisted, empty());
 	}
 
 	private static List<String> names(List<File> files) {

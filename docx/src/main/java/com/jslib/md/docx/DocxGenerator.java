@@ -52,6 +52,9 @@ public class DocxGenerator implements CommandHandler {
 		if (!revisionsFile.isFile()) {
 			throw new FileNotFoundException("Missing document revisions file " + revisionsFile);
 		}
+		for (File unlisted : sources.unlistedSources()) {
+			log.warn("Source file {} is not listed by source.files project property; it is not included in document.", unlisted);
+		}
 		String markdown = markdown(sources.markdownSources());
 
 		DocxVisitor documentVisitor = new DocxVisitor(new DocxTemplate(documentProperties), projectProperties, documentDir);

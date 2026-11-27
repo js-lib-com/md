@@ -3,9 +3,9 @@ Usage: mdt translate [options] [document-dir]
 Translate document sources from English to every language from the languages
 project property, Romanian if not set, using an OpenAI compatible chat
 completions API, by default a local llama.cpp server. Sources are
-document.md, or chapter files from source.dir, revisions.md and
-document.properties; translations are written beside sources with language
-suffix, e.g. document_ro.md. A file is written only if fully translated.
+document.md, or chapter files from source.files or source.dir, revisions.md
+and document.properties; translations are written beside sources with
+language suffix, e.g. document_ro.md. A file is written only if fully translated.
 
 Environment:
   OPENAI_BASE_URL  API base URL; default http://localhost:8080/v1

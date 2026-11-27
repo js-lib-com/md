@@ -6,13 +6,16 @@ Document directory files:
   document.properties    Template variables, e.g. document.title, document.author;
                          figure.label is image caption label, default Figure
   revisions.md           Revisions table: author, date, description
-  document.md            Document source, if source.dir is not set
+  document.md            Document source, if source.dir and source.files are not set
   project.properties     Optional project properties, see below
   *_<lang>.*             Language variants of the files above, e.g. document_ro.md
 
 Project properties:
   file.name               Generated file name, without extension; default document
   source.dir              Directory with chapter sources, merged in file name order
+  source.files            Comma separated chapter sources, merged in listed order,
+                          relative to source.dir or document directory; overrides
+                          file name order; use \ at line end to continue the list
   languages               Comma separated languages, e.g. ro; one document per language
   image.shadow            Add shadow to images; default false
   link.enabled            Style links as hyperlinks; default false

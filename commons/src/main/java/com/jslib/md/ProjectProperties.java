@@ -24,6 +24,12 @@ public final class ProjectProperties {
 
 	/** Directory with markdown sources, relative to document directory, or null if not set. */
 	public final String sourceDir;
+	/**
+	 * Markdown source files, in merge order, relative to source directory; empty if not set, in which case all markdown
+	 * files from source directory are merged in file name order. Names are for default language; translations are
+	 * resolved by language suffix.
+	 */
+	public final List<String> sourceFiles;
 	/** Translation languages, e.g. ro; empty if document is not translated. Used by docx and translate. */
 	public final List<String> languages;
 	/** Generated file name, without extension. */
@@ -43,7 +49,8 @@ public final class ProjectProperties {
 
 	public ProjectProperties(Properties properties) {
 		this.sourceDir = properties.getProperty("source.dir");
-		this.languages = languages(properties.getProperty("languages"));
+		this.sourceFiles = list(properties.getProperty("source.files"));
+		this.languages = list(properties.getProperty("languages"));
 		this.fileName = properties.getProperty("file.name", "document");
 		this.imageShadow = Boolean.parseBoolean(properties.getProperty("image.shadow"));
 		this.linkEnabled = Boolean.parseBoolean(properties.getProperty("link.enabled"));
@@ -53,7 +60,7 @@ public final class ProjectProperties {
 		this.xlsxTableWidth = integer(properties, "xlsx.table.width", 100, 10, 2000);
 	}
 
-	private static List<String> languages(String value) {
+	private static List<String> list(String value) {
 		if (value == null || value.isBlank()) {
 			return List.of();
 		}
