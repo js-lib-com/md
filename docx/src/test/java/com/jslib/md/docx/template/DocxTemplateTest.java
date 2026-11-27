@@ -2,6 +2,7 @@ package com.jslib.md.docx.template;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
@@ -11,6 +12,8 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -48,6 +51,49 @@ public class DocxTemplateTest {
 
 		// THEN
 		assertThat(xml, equalTo("<w:t></w:t>"));
+	}
+
+	@Test
+	public void GivenMissingOrBlankVariableWithLabel_WhenInject_ThenEmptyWholeTextElement() {
+		// GIVEN
+		properties.setProperty("document.title", "Manual");
+		properties.setProperty("document.subtitle", "  ");
+		String source = "<w:r><w:t>{{document.title}}</w:t></w:r><w:r><w:t xml:space=\"preserve\">- {{document.subtitle}}</w:t></w:r>"
+				+ "<w:p><w:r><w:t>Version {{document.version}}</w:t></w:r></w:p><w:tbl/><w:tab/>";
+		Set<String> missingVariables = new TreeSet<>();
+
+		// WHEN
+		String xml = DocxTemplate.inject(source, properties, missingVariables);
+
+		// THEN
+		assertThat(xml, equalTo("<w:r><w:t>Manual</w:t></w:r><w:r><w:t xml:space=\"preserve\"></w:t></w:r>"
+				+ "<w:p><w:r><w:t></w:t></w:r></w:p><w:tbl/><w:tab/>"));
+		assertThat(missingVariables, contains("document.subtitle", "document.version"));
+	}
+
+	@Test
+	public void GivenVariableWithLabel_WhenInject_ThenKeepLabel() {
+		// GIVEN
+		properties.setProperty("document.version", "1.2");
+		String source = "<w:t>Version {{document.version}}</w:t>";
+
+		// WHEN
+		String xml = DocxTemplate.inject(source, properties);
+
+		// THEN
+		assertThat(xml, equalTo("<w:t>Version 1.2</w:t>"));
+	}
+
+	@Test
+	public void GivenMissingVariableOutsideTextElement_WhenInject_ThenReplaceOnlyVariable() {
+		// GIVEN
+		String source = "<dc:title>Draft {{document.title}}</dc:title>";
+
+		// WHEN
+		String xml = DocxTemplate.inject(source, properties);
+
+		// THEN
+		assertThat(xml, equalTo("<dc:title>Draft </dc:title>"));
 	}
 
 	@Test

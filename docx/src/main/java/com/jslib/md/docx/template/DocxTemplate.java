@@ -22,14 +22,18 @@ import com.jslib.md.docx.xml.Wml;
 
 /**
  * DOCX template with {{variable}} placeholders replaced by document properties. Template archive is processed in memory:
- * XML parts have variables injected, with values XML escaped, while all other parts are copied unchanged. If a variable
- * has no property, its name is used as value.
+ * XML parts have variables injected, with values XML escaped, while all other parts are copied unchanged. A variable
+ * without value, i.e. missing or blank property, is replaced by empty text. Moreover, a WordprocessingML text element
+ * with a variable without value is emptied, together with its static text, so that a label like
+ * <code>Version {{document.version}}</code> is not displayed without value.
  */
 public class DocxTemplate {
 	private static final Logger log = LoggerFactory.getLogger(DocxTemplate.class);
 
 	private static final String TEMPLATE_RESOURCE = "/template.docx";
 	private static final Pattern VARIABLE = Pattern.compile("\\{\\{([^{}]+)}}");
+	/** WordprocessingML text element, with start tag, text content and end tag groups. */
+	private static final Pattern TEXT_ELEMENT = Pattern.compile("(<w:t(?:\\s[^>]*)?>)([^<]*)(</w:t>)");
 
 	private final byte[] document;
 
@@ -74,14 +78,42 @@ public class DocxTemplate {
 
 	/**
 	 * Replace variables in XML text; variables without value are replaced by empty text and their names are collected in
-	 * missing variables set.
+	 * missing variables set. Text elements with a variable without value are emptied, static text included.
 	 */
 	static String inject(String xml, Properties properties, Set<String> missingVariables) {
+		return injectVariables(emptyTextsWithMissingVariables(xml, properties, missingVariables), properties, missingVariables);
+	}
+
+	/** Empty text elements with at least one variable without value; static text of emptied elements is removed too. */
+	private static String emptyTextsWithMissingVariables(String xml, Properties properties, Set<String> missingVariables) {
+		Matcher matcher = TEXT_ELEMENT.matcher(xml);
+		StringBuilder builder = new StringBuilder();
+		while (matcher.find()) {
+			Set<String> missing = new TreeSet<>();
+			Matcher variables = VARIABLE.matcher(matcher.group(2));
+			while (variables.find()) {
+				if (value(properties, variables.group(1)) == null) {
+					missing.add(variables.group(1));
+				}
+			}
+			String element = matcher.group();
+			if (!missing.isEmpty()) {
+				log.debug("Empty text element with missing variables {}: {}", missing, element);
+				missingVariables.addAll(missing);
+				element = matcher.group(1) + matcher.group(3);
+			}
+			matcher.appendReplacement(builder, Matcher.quoteReplacement(element));
+		}
+		matcher.appendTail(builder);
+		return builder.toString();
+	}
+
+	private static String injectVariables(String xml, Properties properties, Set<String> missingVariables) {
 		Matcher matcher = VARIABLE.matcher(xml);
 		StringBuilder builder = new StringBuilder();
 		while (matcher.find()) {
 			String name = matcher.group(1);
-			String value = properties.getProperty(name);
+			String value = value(properties, name);
 			if (value == null) {
 				missingVariables.add(name);
 				value = "";
@@ -91,6 +123,12 @@ public class DocxTemplate {
 		}
 		matcher.appendTail(builder);
 		return builder.toString();
+	}
+
+	/** Property value or null if property is missing or blank. */
+	private static String value(Properties properties, String name) {
+		String value = properties.getProperty(name);
+		return value == null || value.isBlank() ? null : value;
 	}
 
 	private static boolean isXml(String entryName) {
